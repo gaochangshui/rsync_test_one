@@ -1,0 +1,217 @@
+﻿@model IEnumerable<GitlabManager.Models.Warehouse>
+@{
+    ViewBag.Title = "All Repository";
+}
+<link rel="stylesheet" type="text/css" href="~/Content/datatables/jquery.dataTables.css">
+
+<br />
+<form class="form-inline" action="Warehouse" method="get">
+    <div class="form-group">
+        <label for="pj_name">仓库名称</label>
+        <input type="text" class="form-control" id="pj_name" name="pj_name" placeholder="仓库名称">
+    </div>
+    <div class="form-group">
+        <label for="group_name">组名称</label>
+        <input type="text" class="form-control" id="group_name" name="group_name" placeholder="组名称">
+    </div>
+    <button type="submit" class="btn btn-default">检索</button><input id="input_url" style="opacity: 0;" readonly />
+</form>
+<br />
+<table id="table_id_example" class="display">
+    <thead>
+        <tr>
+            <th>
+                仓库名称
+            </th>
+            <th>
+
+            </th>
+            <th style="width: 31px !important;">
+                描述
+            </th>
+            <th>
+                创建者
+            </th>
+            <th style="width: 130px !important;">
+                创建日期
+            </th>
+            <th style="width: 130px !important;">
+                最近更新
+            </th>
+            <th>
+                分组名称
+            </th>
+            <th>
+                仓库成员
+            </th>
+            <th>
+                分组成员
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.pj_name)
+                    <a href="https://code.trechina.cn/sonarqube/projects?search=@item.pj_name" target="_blank">
+                        <svg t="1639045426047" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1865" width="16" height="16"><path d="M669.226667 16.469333l-19.84 32.682667c148.352 90.112 269.013333 224.853333 339.882666 379.306667L1024 412.586667c-73.984-161.408-199.978667-302.08-354.773333-396.117334zM361.045333 38.826667l-13.013333 45.866666c293.973333 84.309333 528.384 325.973333 597.205333 615.296l46.293334-11.008C918.826667 383.018667 671.36 127.872 361.045333 38.784zM0 113.792v57.258667c467.754667 0 848.341333 375.253333 848.341333 836.48h57.258667c0-492.8-406.272-893.738667-905.6-893.738667z" p-id="1866" fill="#17AEEC"></path></svg>
+                    </a>
+                    <i class="bi bi-person-lines-fill" style="cursor: pointer;" onclick="showCommitHistory(@item.id)"></i>
+                    @{
+                        if (item.archived)
+                        {
+                            <i class="bi bi-archive"></i>
+                        }
+                    }
+                </td>
+                <td>
+                    <button type="button" style="border:none;" class="btn btn-default" title="Copy Url to Cliboard" onclick="copyURLtoCliboard('@item.id')"> <i id="clipboard-@item.id" class="bi bi-clipboard"></i></button>
+                </td>
+                <td>
+                    @{
+                        if (item.description != "" && item.description != null)
+                        {
+                            <a tabindex="0" data-placement="top" class="btn btn-default" style="border:none;" role="button" data-toggle="popover" data-trigger="focus" title="描述" data-content="@item.description">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </a>
+                        }
+                    }
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.creator_name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.created_at)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.last_activity_at)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.group_name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.project_member)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.group_member)
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<!-- 模态框（Modal） -->
+<div class="modal fade" id="commitModel" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title">有commit操作历史人员</h4>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group" id="commitHtml">
+                    
+                </ul>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal -->
+</div>
+<script>
+    function getQueryString(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) return decodeURIComponent(r[2]); return '';
+    }
+    window.onload = function () {
+        document.getElementById("pj_name").value = getQueryString('pj_name');
+        document.getElementById("group_name").value = getQueryString('group_name');
+        $('#table_id_example').DataTable();
+        $('#table_id_example').on('order.dt search.dt page.dt',
+            () => {
+                setTimeout(() => {
+                    $("[data-toggle='popover']").popover();
+                }, 500)
+            });
+        $("[data-toggle='popover']").popover();
+    }
+    function copyURLtoCliboard(id) {
+        if (id == '')
+            return
+
+        //剪切板清空
+        copyCliboard(' ', id);
+        //获取项目URL
+        $.ajax({
+            url: document.location.toString().split("?")[0] + '/getProjectId',
+            type: 'post',
+            data: { id: id },
+            dataType: 'json',
+            timeout: 200000,
+            success: function (data, id, textStatus) {
+                if (data.Success && data.url != null) {
+                    //alert(data.url);
+                    copyCliboard(data.url, id);
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                if (textStatus == 'timeout') {
+                    alert('请求超时');
+                    return false;
+                }
+                //alert(jqXHR.responseText);
+            }
+        });
+    }
+    function copyCliboard(str, id) {
+        document.getElementById('input_url').value = str;
+        const input = document.querySelector('#input_url');
+        input.select();
+        if (document.execCommand('copy')) {
+            var liid = 'clipboard-' + id;
+            $("#" + liid).attr("class", "bi bi-clipboard-check");
+            setTimeout(function () {
+                $("#" + liid).attr("class", "bi bi-clipboard");
+            }, 2000);
+        }
+    }
+    function showCommitHistory(id) {
+        if (id == '')
+            return
+        window.FakeLoader.showOverlay();
+        //获取项目URL
+        $.ajax({
+            url: document.location.toString().split("?")[0] + '/getPJCommits?id=' + id,
+            type: 'post',
+            data: { id: id },
+            dataType: 'json',
+            timeout: 200000,
+            success: data => {
+                console.log(data)
+                window.FakeLoader.hideOverlay();
+                if (data) {
+                    let html = '';
+                    for (commitName in data) {
+                        if (commitName) {
+                            html += `<li class="list-group-item">${commitName}</li>`;
+                        }
+                    }
+                    $("#commitHtml").html(html);
+                    $("#commitModel").modal('show');
+                } else {
+                    alert('该仓库没有commit记录');
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                window.FakeLoader.hideOverlay();
+                if (textStatus == 'timeout') {
+                    alert('请求超时');
+                    return false;
+                } else {
+                    alert('服务器错误');
+                }
+            }
+        });
+    }
+</script>

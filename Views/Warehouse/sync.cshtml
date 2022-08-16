@@ -1,0 +1,253 @@
+﻿@{
+    ViewBag.Title = "Repository Sync";
+}
+<link rel="stylesheet" type="text/css" href="~/Content/datatables/jquery.dataTables.css">
+<br />
+<div class="form-inline">
+    <div class="form-group">
+        <label for="pj_name">仓库名称</label>
+        <input type="text" class="form-control" id="pj_name" name="pj_name" placeholder="仓库名称">
+    </div>
+    <div class="form-group">
+        <label for="group_name">组名称</label>
+        <input type="text" class="form-control" id="group_name" name="group_name" placeholder="组名称">
+    </div>
+    <button type="button" onclick="search()" class="btn btn-default">检索</button>
+</div>
+<br />
+<table id="table_id_example" class="display">
+    <thead>
+        <tr>
+            <th>
+                仓库名称
+            </th>
+            <th>
+                创建者
+            </th>
+            <th style="width: 130px;">
+                创建日期
+            </th>
+            <th>
+                分组名称
+            </th>
+            <th>
+                仓库成员
+            </th>
+            <th>
+                分组成员
+            </th>
+            <th style="width: 130px;">
+                上次同期时间
+            </th>
+            <th style="width: 29px;">
+                同期
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+<!-- 模态框（Modal） -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog" style="width: 868px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title"><span id="pjName"></span>仓库设置PJCD</h4>
+            </div>
+            <div class="modal-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>PJCD</th>
+                            <th>需要同期URL</th>
+                            <th>本地分支</th>
+                            <th>同期分支</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pjcdList">
+                    </tbody>
+                </table>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal -->
+</div>
+<!-- loading -->
+<div class="modal fade" id="loading" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" data-backdrop='static'>
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="myModalLabel">正在同期</h4>
+            </div>
+            <div class="modal-body">
+                请稍候。。。<span id="result"></span>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    let mytable;
+    function getQueryString(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) return decodeURIComponent(r[2]); return '';
+    }
+    window.onload = function () {
+        document.getElementById("pj_name").value = getQueryString('pj_name');
+        document.getElementById("group_name").value = getQueryString('group_name');
+        mytable = $("#table_id_example").DataTable({
+            ajax: {
+                url: "./getSync",
+                type: 'get',
+                data: function (d) {
+                    return $.extend({}, d, {
+                        pj_name: document.getElementById("pj_name").value,
+                        group_name: document.getElementById("group_name").value
+                    });
+                },
+                dataSrc: function (res) {
+                    return JSON.parse(res).data;
+                }
+            },
+            columns: [
+                { data: 'pjName' },
+                { data: 'creatorName' },
+                { data: 'createdAt' },
+                { data: 'groupName' },
+                { data: 'projectMember' },
+                { data: 'groupMember' },
+                { data: 'updatedAt' },
+                {
+                    data: null, "render": function (data, type, row, meta) {
+                        return `<input style="display: none" type="button" value="设置" onclick="showPJCD(${row.id},'${row.pjName}')"/><input style="display:${row.transfer ? 'display' : 'none'}" type="button" value="同期" onclick="tongqi(${row.id})"/>`
+                    }
+                }
+            ],
+            processing: true
+        });
+    }
+    function search() {
+        mytable.ajax.reload();
+    }
+    function tongqi(id) {
+        $('#loading').modal('show');
+        $.ajax({
+            type: "GET",
+            url: "./doSync",
+            data: { id: id },
+            dataType: "json",
+            success: (data1) => {
+                console.log(data1);
+                $('#loading').modal('hide');
+                data = JSON.parse(data1);
+                console.log(data);
+                let news = data.data.pop();
+                if (news === 'OK' || news === 'ok') {
+                    alert('同期成功');
+                    this.search();
+                } else {
+                    alert(news);
+                }
+            },error: (err) => {
+                console.log(err);
+                $('#loading').modal('hide');
+                alert('同期失败');
+            }
+        });
+    }
+    function showPJCD(id, pjname) {
+        $("#pjName").text(pjname);
+        $("#pjcdList").text("");
+        getPJCD(id);
+    };
+    function getPJCD(id) {
+        $('#loading').modal('show');
+        //获取项目PJCDLIST
+        $.ajax({
+            url: './getProjectsAttributes',
+            type: 'get',
+            data: { id },
+            dataType: 'json',
+            timeout: 200000,
+            success: (arrts) => {
+                console.log(arrts)
+                let html = '';
+                if (arrts) {
+                    arrts.map(e => {
+                        if (e.key !== 'pjcdlist') {
+                            let arrt = JSON.parse(e.value);
+                            html += `<tr>
+                                        <td>${e.key}</td>
+                                        <td>${arrt.jpurl}</td>
+                                        <td>${arrt.chbranch}</td>
+                                        <td>${arrt.jpbranch}</td>
+                                        <td><input type="button" value="删除" onclick="delPJCD(${id}, ${e.key})"/></td>
+                                    </tr>`;
+                        }
+                    })
+                }
+                html += `<tr>
+                            <td><input type="text" id="pjcd" placeholder="请输入PJCD"></td>
+                            <td><input type="text" id="jpurl" placeholder="请输入需要同期URL"></td>
+                            <td><input type="text" id="chbranch" placeholder="请输入本地分支"></td>
+                            <td><input type="text" id="jpbranch" placeholder="请输入同期分支"></td>
+                            <td><input type="button" value="新增/更新" onclick="addPJCD(${id})"/></td>
+                        </tr>`;
+                $("#pjcdList").html(html);
+                $('#loading').modal('hide');
+                $("#myModal").modal('show');
+            },
+            error: function (...err) {
+                $('#loading').modal('hide');
+                console.log('失败', err);
+            }
+        });
+    }
+    function delPJCD(id, pjcd) {
+        $('#loading').modal('show');
+        //获取项目PJCDLIST
+        $.ajax({
+            url: './delProjectsAttributes',
+            type: 'post',
+            data: { id, key: pjcd },
+            dataType: 'text',
+            timeout: 200000,
+            success: (data) => {
+                console.log(data)
+                this.getPJCD(id);
+            },
+            error: function (...err) {
+                $('#loading').modal('hide');
+                console.log('失败', err);
+            }
+        });
+    }
+    function addPJCD(id) {
+        let pjcd = $("#pjcd").val().trim();
+        let jpurl = $("#jpurl").val().trim();
+        let chbranch = $("#chbranch").val().trim();
+        let jpbranch = $("#jpbranch").val().trim();
+        if (!pjcd) {
+            alert('PJCD必须输入');
+            return;
+        }
+        $('#loading').modal('show');
+        //获取项目PJCDLIST
+        $.ajax({
+            url: './setPJCD',
+            type: 'post',
+            data: { id, pjcd, jpurl, chbranch, jpbranch},
+            dataType: 'json',
+            timeout: 200000,
+            success: (data) => {
+                console.log(data)
+                this.getPJCD(id);
+            },
+            error: function (...err) {
+                $('#loading').modal('hide');
+                console.log('失败', err);
+            }
+        });
+    }
+</script>

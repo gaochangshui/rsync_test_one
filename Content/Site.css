@@ -1,0 +1,149 @@
+﻿html {
+    background-color: #e2e2e2;
+    margin: 0;
+    padding: 0;
+    -webkit-background-size: cover;
+    background-position: top center;
+}
+body {
+    padding-top:50px;
+    -webkit-background-size: cover;
+    background-position: center;
+}
+
+/* Set padding to keep content from hitting the edges */
+.body-content {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.navbar-inverse {
+    background-color: #1a3652;
+}
+
+    .navbar-inverse .navbar-nav > .active > a,
+    .navbar-inverse .navbar-nav > .active > a:hover,
+    .navbar-inverse .navbar-nav > .active > a:focus {
+        color: #1a3652;
+        background-color: #fff;
+    }
+
+    .navbar-inverse .navbar-nav > .open > a,
+    .navbar-inverse .navbar-nav > .open > a:hover,
+    .navbar-inverse .navbar-nav > .open > a:focus {
+        color: #1a3652;
+        background-color: #fff;
+    }
+/* Override the default bootstrap behavior where horizontal description lists 
+   will truncate terms that are too long to fit in the left column 
+*/
+.dl-horizontal dt {
+    white-space: normal;
+}
+
+/* Set width on the form input elements since they're 100% wide by default */
+input,
+select,
+button,
+textarea {
+    font-family: 'Microsoft YaHei UI',Helvetica, Arial, Verdana, Tahoma, sans-serif;
+    max-width: 280px;
+}
+
+
+h2, h3, h4, h5, h6,
+.h2, .h3, .h4, .h5, .h6 {
+    font-family: 'Microsoft YaHei UI',Helvetica, Arial, Verdana, Tahoma, sans-serif;
+}
+
+label {
+    font-family: 'Microsoft YaHei UI',Helvetica, Arial, Verdana, Tahoma, sans-serif;
+}
+
+
+
+.form-signin {
+    max-width: 330px;
+    max-height: 330px;
+    padding: 15px;
+    padding-bottom: 30px;
+    margin: auto;
+    background-color: #eee;
+    border-radius: 5px;
+}
+
+    .form-signin .form-signin-heading,
+    .form-signin .checkbox {
+        margin-bottom: 10px;
+    }
+
+    .form-signin .checkbox {
+        font-weight: normal;
+    }
+
+    .form-signin .form-control {
+        position: relative;
+        font-size: 16px;
+        height: auto;
+        padding: 10px;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+    }
+
+        .form-signin .form-control:focus {
+            z-index: 2;
+        }
+
+    .form-signin input[type="text"] {
+        max-width: 100%;
+        margin: 0px;
+        margin-bottom: -1px;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .form-signin input[type="password"] {
+        max-width: 100%;
+        margin: 0px;
+        margin-bottom: 10px;
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
+
+.validation-summary-errors {
+    color: #e80c4d;
+    font-size: .8em;
+    font-family: Meiryo,'MS PGothic';
+}
+
+#loginForm .validation-summary-errors ul {
+    margin: 0;
+    padding: 0;
+}
+
+#loginForm .validation-summary-errors li {
+    display: inline;
+    list-style: none;
+    margin: 0;
+}
+
+#logoutForm a {
+    color: #9d9d9d;
+    text-decoration: none;
+    font-size: xx-small;
+}
+
+.logoutForm{
+    height:25px;
+}
+
+#logoutForm a:hover {
+    color: #f5f5f5;
+    text-decoration: none;
+    font-size:xx-small;
+}
+
+.container {
+    width: 1255px;
+}

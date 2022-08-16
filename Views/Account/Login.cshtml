@@ -1,0 +1,72 @@
+@model GitlabManager.Models.LoginModel
+
+@{
+    ViewBag.Title = "Login";
+}
+@{
+    Layout = "";
+}
+<style>
+    .cover {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        text-align: center;
+        line-height: 300px;
+        color: white;
+    }
+
+        .cover::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent url('~/../../Content/gitlab-vs-github-1024x512.png') center center no-repeat;
+            filter: blur(15px);
+            z-index: -1;
+            background-size: cover;
+        }
+
+
+</style>
+<!DOCTYPE html>
+<html lang="zh-cn" id="html" class="cover" style="font-family: Meiryo,'MS PGothic';">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewBag.Title - GitLab Manager</title>
+    <link rel="stylesheet" href="~/Content/bootstrap.min.css">
+    <link href="~/favicon.ico" rel="icon" />
+    <link href="~/Content/Site.css" rel="stylesheet" />
+    @Scripts.Render("~/bundles/modernizr")
+
+</head>
+<body style="background-color: transparent; padding-top:200px;" >
+    @using (Html.BeginForm("Login", "Account", new { ReturnUrl = ViewBag.ReturnUrl }, FormMethod.Post, new { @class = "form-signin" }))
+    {
+        @Html.AntiForgeryToken()
+
+        <h3 class="form-signin-heading">Please Sign in</h3>
+        <fieldset>
+            <legend style="display:none;">Log in Form</legend>
+            <input id="UserCD" name="UserCD" type="text" class="form-control" placeholder="User Code" required autofocus>
+            <input type="Password" name="Password" class="form-control" placeholder="LDAP Password" required>
+            @*<label class="checkbox">
+                    @Html.CheckBoxFor(m => m.RememberMe, new { @checked = false })
+                    @Html.LabelFor(m => m.RememberMe, new { @class = "checkbox" })
+                </label>*@
+            @Html.ValidationSummary(true)
+            <p style="text-align:right;"><a href="http://docs.trechina.cn/docs/ldap_20210622">Forgot Password?</a></p>
+            <button class="btn btn-lg btn-primary btn-block" style="max-width:100%;" type="submit">Sign in</button>
+        </fieldset>
+    }
+
+   
+    <script src="~/Content/jquery.min.js"></script>
+    <script src="~/Content/bootstrap.min.js"></script>
+    <script type="text/javascript" charset="utf8" src="~/Content/datatables/jquery.dataTables.js"></script>
+</body>
+</html>
