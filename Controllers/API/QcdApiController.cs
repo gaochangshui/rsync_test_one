@@ -200,11 +200,12 @@ namespace GitLabManager.Controllers.API
             try
             {
                 HttpClient httpClient = new HttpClient();
-                var syncList = httpClient.GetAsync("http://qcd.trechina.cn/qcdapi/projects?filter=all-projects").Result;
+                //var syncList = httpClient.GetAsync("http://qcd.trechina.cn/qcdapi/projects?filter=all-projects").Result;
+                var syncList = httpClient.GetAsync("http://172.17.100.15:8090/api/Agreements").Result;
                 var result = syncList.Content.ReadAsStringAsync().Result;
 
                 //API的项目信息取得
-                List<QcdProjects> pjList = JsonConvert.DeserializeObject<List<QcdProjects>>(result);
+                var pjList = JsonConvert.DeserializeObject<AgreementInfo>(result);
 
                 //数据库中的数据取得
                 List<Agreements> agreList = db_agora.Agreements.ToList();
@@ -216,9 +217,9 @@ namespace GitLabManager.Controllers.API
                     //数据库中的最大ID取得（新规数据的情况下使用）
                     int maxId = agreList.Count > 0 ? agreList.Max(i => i.id):0;
 
-                    for (int i = 0; i < pjList.Count; i++)
+                    for (int i = 0; i < pjList.projectInfos.Count; i++)
                     {
-                        Agreements _agre = agreList.Where(cd => cd.agreement_cd == pjList[i].ProjectCode.ToString()).FirstOrDefault();
+                        Agreements _agre = agreList.Where(cd => cd.agreement_cd == pjList.projectInfos[i].ProjectCD.ToString()).FirstOrDefault();
 
                         int updateStatus = 0; // 初期状态
 
@@ -228,26 +229,75 @@ namespace GitLabManager.Controllers.API
                             _agre = new Agreements();
                             _agre.id = ++ maxId ;
                         }
+
+                        var member = pjList.memberInfos.Where(m => m.ProjectCD == pjList.projectInfos[i].ProjectCD);
+                        _agre.updated_at = DateTime.Now;
+
+                        if (updateStatus == 1)
+                        {
+                            _agre.agreement_cd = pjList.projectInfos[i].ProjectCD.ToString();
+                            _agre.agreement_name = pjList.projectInfos[i].ProjectName;
+                            _agre.status = pjList.projectInfos[i].status;
+                            _agre.plan_mandays = pjList.projectInfos[i].Manday;
+                            _agre.plan_begin_date = pjList.projectInfos[i].BeginDate;
+                            _agre.plan_end_date = pjList.projectInfos[i].EndDate;
+                            _agre.manager_id = pjList.projectInfos[i].LeaderCD;
+                            _agre.manager_name = pjList.projectInfos[i].LeaderName;
+                            _agre.member_ids = JsonConvert.SerializeObject(member);
+    
+                            db_agora.Agreements.Add(_agre);
+                        }
                         else
                         {
-                            if (_agre.agreement_name != pjList[i].ProjectName
-                                || _agre.status != pjList[i].status)
+                            if (_agre.agreement_name != pjList.projectInfos[i].ProjectName)
                             {
+                                _agre.agreement_name = pjList.projectInfos[i].ProjectName;
                                 updateStatus = 2; // 数据变更
                             }
-                        }
 
-                        if (updateStatus != 0)
-                        {
-                            _agre.agreement_cd = pjList[i].ProjectCode.ToString();
-                            _agre.agreement_name = pjList[i].ProjectName;
-                            _agre.status = pjList[i].status;
-                            _agre.updated_at = DateTime.Now;
-                            if (updateStatus == 1)
+                            if (_agre.status.ToString() != pjList.projectInfos[i].status.ToString())
                             {
-                                db_agora.Agreements.Add(_agre);
+                                _agre.status = pjList.projectInfos[i].status;
+                                updateStatus = 3; // 数据变更
                             }
-                            else
+
+                            if (_agre.plan_mandays != pjList.projectInfos[i].Manday)
+                            {
+                                _agre.plan_mandays = pjList.projectInfos[i].Manday;
+                                updateStatus = 4; // 数据变更
+                            }
+
+                            if (_agre.plan_begin_date != pjList.projectInfos[i].BeginDate)
+                            {
+                                _agre.plan_begin_date = pjList.projectInfos[i].BeginDate;
+                                updateStatus = 5; // 数据变更
+                            }
+
+                            if (_agre.plan_end_date != pjList.projectInfos[i].EndDate)
+                            {
+                                _agre.plan_end_date = pjList.projectInfos[i].EndDate;
+                                updateStatus = 6; // 数据变更
+                            }
+
+                            if (_agre.manager_id != pjList.projectInfos[i].LeaderCD)
+                            {
+                                _agre.manager_id = pjList.projectInfos[i].LeaderCD;
+                                updateStatus = 7; // 数据变更
+                            }
+
+                            if (_agre.manager_name != pjList.projectInfos[i].LeaderName)
+                            {
+                                _agre.manager_name = pjList.projectInfos[i].LeaderName;
+                                updateStatus = 8; // 数据变更
+                            }
+
+                            if (_agre.member_ids != JsonConvert.SerializeObject(member))
+                            {
+                                _agre.member_ids = JsonConvert.SerializeObject(member);
+                                updateStatus = 9; // 数据变更
+                            }
+
+                            if (updateStatus != 0)
                             {
                                 db_agora.Entry(_agre).State = EntityState.Modified;
                             }

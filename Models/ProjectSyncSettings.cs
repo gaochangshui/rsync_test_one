@@ -40,14 +40,9 @@ namespace GitLabManager.Models
         public string member_ids { get; set; }
         public DateTime updated_at { get; set; }
         public string updated_by { get; set; }
-    }
-
-    public class QcdProjects
-    {
-        public int ProjectCode { get; set; }
-        public string ProjectName { get; set; }
-        public int status { get; set; }
-        public string StatusName { get; set; }
+        public string manager_id { get; set; }
+        public string manager_name { get; set; }
+        public string project_count { get; set; }
     }
 
     public class QcdProjectShow
@@ -93,6 +88,31 @@ namespace GitLabManager.Models
         public string branchUrl { get; set; }
         public string language { get; set; }
         public string dataBase { get; set; }
+    }
+
+    public class AgreementInfo
+    {
+        public List<ProjectInfo> projectInfos { get; set; }
+        public List<MemberInfo> memberInfos { get; set; }
+    }
+    public class ProjectInfo
+    {
+        public int ProjectCD { get; set; }
+        public string ProjectName { get; set; }
+        public int status { get; set; }
+        public string StatusName { get; set; }
+        public string LeaderCD { get; set; }
+        public string LeaderName { get; set; }
+        public string Manday { get; set; }
+        public string BeginDate { get; set; }
+        public string EndDate { get; set; }
+    }
+
+    public class MemberInfo
+    {
+        public int ProjectCD { get; set; }
+        public string MemberID { get; set; }
+        public string MemberName { get; set; }
     }
 
 }
