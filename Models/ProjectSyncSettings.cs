@@ -57,6 +57,7 @@ namespace GitLabManager.Models
     {
         public string userId { get; set; }
         public string id { get; set; }
+        public string count { get; set; }
         public List<Projects> gitlabProject { get; set; }
     }
 
@@ -113,6 +114,7 @@ namespace GitLabManager.Models
         public int ProjectCD { get; set; }
         public string MemberID { get; set; }
         public string MemberName { get; set; }
+        public string avatar { get; set; }
     }
 
 }

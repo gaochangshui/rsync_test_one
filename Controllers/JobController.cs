@@ -8,6 +8,7 @@ using System.Linq;
 using GitLabManager.Models;
 using GitLabManager.DataContext;
 using System.IO;
+using GitLabManager.Controllers.API;
 
 namespace GitLabManager.Controllers
 {
@@ -23,17 +24,9 @@ namespace GitLabManager.Controllers
             timer.Elapsed += (s, e) =>
             {
                 DateTime dt = DateTime.Now;
-                if (dt.Minute == 0 && dt.Minute < 10)
+                if (dt.Minute % 20 == 0) //每20分钟 同期一次
                 {
                     QCDProjectSync();
-                }
-                else if (dt.Minute >= 10 && dt.Minute.ToString().Substring(1,1) == "0") // 每10分钟执行
-                {
-                     QCDProjectSync();
-                }
-                else
-                {
-                    
                 }
             };
         }
@@ -51,8 +44,8 @@ namespace GitLabManager.Controllers
                 sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
 
                 HttpClient httpClient = new HttpClient();
-                //var syncList = httpClient.GetAsync("http://qcd.trechina.cn/qcdapi/projects?filter=all-projects").Result;
-                var syncList = httpClient.GetAsync("http://172.17.100.15:8090/api/Agreements").Result;
+                var syncList = httpClient.GetAsync("http://qcd.trechina.cn/qcdapi/Agreements").Result;
+                //var syncList = httpClient.GetAsync("http://172.17.100.15:8090/api/Agreements").Result;
                 var result = syncList.Content.ReadAsStringAsync().Result;
 
                 //API的项目信息取得
@@ -60,6 +53,9 @@ namespace GitLabManager.Controllers
 
                 //数据库中的数据取得
                 List<Agreements> agreList = db_agora.Agreements.ToList();
+
+                QcdApiController qcdApi = new QcdApiController();
+                var userUrl = qcdApi.GetMemberUrl();
 
                 int dbstate = 0;
 
@@ -81,7 +77,8 @@ namespace GitLabManager.Controllers
                             _agre.id = ++maxId;
                         }
 
-                        var member = pjList.memberInfos.Where(m => m.ProjectCD == pjList.projectInfos[i].ProjectCD);
+                        var member = pjList.memberInfos.Where(m => m.ProjectCD == pjList.projectInfos[i].ProjectCD).ToList();
+                        member = qcdApi.MemberConvert(member, userUrl);
                         _agre.updated_at = DateTime.Now;
 
                         if (updateStatus == 1)
@@ -147,6 +144,7 @@ namespace GitLabManager.Controllers
                                 _agre.member_ids = JsonConvert.SerializeObject(member);
                                 updateStatus = 9; // 数据变更
                             }
+                            _agre.project_count = qcdApi.GetWareHouseCount(_agre.repository_ids);
 
                             if (updateStatus != 0)
                             {
