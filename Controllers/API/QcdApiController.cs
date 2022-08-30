@@ -193,7 +193,11 @@ namespace GitLabManager.Controllers.API
             //page_.pageNumAll = (int)Math.Ceiling((double)dataCnt / page_.pageSize);
             return page_;
         }
-
+       
+        /// <summary>
+        ///  成员头像地址取得
+        /// </summary>
+        /// <returns></returns>
         public List<memberinfo> GetMemberUrl()
         {
             var  allMembers = new List<memberinfo>();
@@ -233,6 +237,7 @@ namespace GitLabManager.Controllers.API
                 var url = user.Where(u => u.username == m.MemberID).ToList();
                 if (url == null || url.Count == 0 || url[0].avatar_url == null || url[0].avatar_url == "")
                 {
+                    // 成员头像不存在的情况下，用指定图片地址代替。
                     m.avatar = "https://code.trechina.cn/gitlab/assets/no_avatar-849f9c04a3a0d0cea2424ae97b27447dc64a7dbfae83c036c45b403392f0e8ba.png";
                 }
                 else
@@ -366,6 +371,7 @@ namespace GitLabManager.Controllers.API
                                 updateStatus = 9; // 数据变更
                             }
 
+                            //仓库数量计算
                             _agre.project_count = GetWareHouseCount(_agre.repository_ids);
 
                             if (updateStatus != 0)

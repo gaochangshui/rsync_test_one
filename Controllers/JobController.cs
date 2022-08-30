@@ -45,7 +45,7 @@ namespace GitLabManager.Controllers
 
                 HttpClient httpClient = new HttpClient();
                 var syncList = httpClient.GetAsync("http://qcd.trechina.cn/qcdapi/Agreements").Result;
-                //var syncList = httpClient.GetAsync("http://172.17.100.15:8090/api/Agreements").Result;
+
                 var result = syncList.Content.ReadAsStringAsync().Result;
 
                 //API的项目信息取得
@@ -144,6 +144,8 @@ namespace GitLabManager.Controllers
                                 _agre.member_ids = JsonConvert.SerializeObject(member);
                                 updateStatus = 9; // 数据变更
                             }
+
+                            // 仓库数量计算
                             _agre.project_count = qcdApi.GetWareHouseCount(_agre.repository_ids);
 
                             if (updateStatus != 0)
@@ -160,7 +162,7 @@ namespace GitLabManager.Controllers
             }
             catch (Exception ex)
             {
-                string errTxt = "同期失败，失败信息：" + ex.Message;
+                string errTxt = "同期失败，失败信息：" + ex.Message + ",失败时间：" + DateTime.Now.ToString();
                 sws.WriteLine(errTxt);
             }
             finally
