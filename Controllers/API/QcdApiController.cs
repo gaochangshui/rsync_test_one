@@ -505,7 +505,8 @@ namespace GitLabManager.Controllers.API
 
                 List<Agreements> agreList = new List<Agreements>();
                 //全部的课题数量
-                int allCount = db_agora.Agreements.ToList().Count;
+                var all = db_agora.Agreements.ToList();
+                int allCount = all.Count;
 
                 //进行中的课题数量
                 int doingCount = db_agora.Agreements.Where(i => i.status == 1 || i.status == 2 || i.status == 3).ToList().Count;
@@ -513,7 +514,18 @@ namespace GitLabManager.Controllers.API
                 //结束和终止的课题数量
                 int endCount = db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList().Count;
 
-                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount });
+                foreach (var a in all)
+                {
+                    if ((a.status == 1 || a.status == 2 || a.status == 3)
+                        && (a.manager_id == userId || memberCheck(a.member_ids, userId)))
+                    {
+                        agreList.Add(a);
+                    }
+                }
+                // 我参与的
+                int myCount = agreList.Count;
+
+                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount , myCount = myCount });
             }
             catch
             {
