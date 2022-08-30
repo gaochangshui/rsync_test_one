@@ -193,22 +193,95 @@ namespace GitLabManager.Controllers.API
             //page_.pageNumAll = (int)Math.Ceiling((double)dataCnt / page_.pageSize);
             return page_;
         }
+       
+        /// <summary>
+        ///  成员头像地址取得
+        /// </summary>
+        /// <returns></returns>
+        public List<memberinfo> GetMemberUrl()
+        {
+            var  allMembers = new List<memberinfo>();
+            string api = ConfigurationManager.AppSettings["gitlab_instance"];
+            HttpClient httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token5"]);
 
+            var response = httpClient.GetAsync(api + "users?per_page=100").Result;
+            int TotalPages = int.Parse(response.Headers.GetValues("X-Total-Pages").First());
+            int Page = int.Parse(response.Headers.GetValues("X-Page").First());
+            while (Page <= TotalPages)
+            {
+                response = httpClient.GetAsync(api + "users?per_page=100&page=" + Page.ToString()).Result;
+                if (Page < TotalPages)
+                {
+                    Page = int.Parse(response.Headers.GetValues("X-Next-Page").First());
+                }
+                else
+                {
+                    Page = TotalPages + 1;
+                }
+                var result = response.Content.ReadAsStringAsync().Result;
+                var list = JsonConvert.DeserializeObject<List<memberinfo>>(result);
+                foreach(var m in list)
+                {
+                    allMembers.Add(m);
+                }
+            }
+
+            return allMembers;
+        }
+
+        public List<MemberInfo> MemberConvert(List<MemberInfo> member, List<memberinfo> user)
+        {
+            foreach(var m in member)
+            {
+                var url = user.Where(u => u.username == m.MemberID).ToList();
+                if (url == null || url.Count == 0 || url[0].avatar_url == null || url[0].avatar_url == "")
+                {
+                    // 成员头像不存在的情况下，用指定图片地址代替。
+                    m.avatar = "https://code.trechina.cn/gitlab/assets/no_avatar-849f9c04a3a0d0cea2424ae97b27447dc64a7dbfae83c036c45b403392f0e8ba.png";
+                }
+                else
+                {
+                    m.avatar = url[0].avatar_url;
+                }
+            }
+            return member;
+        }
+
+        public string GetWareHouseCount(string data)
+        {
+            if (data == null)
+            {
+                return "0";
+            }
+            else
+            {
+                List<Projects> v = JsonConvert.DeserializeObject<List<Projects>>(data);
+                return v != null ? v.Count.ToString() : "0";
+            }
+        }
+
+        public class memberinfo
+        {
+            public string username { get; set; }
+            public string avatar_url { get; set; }
+        }
         [HttpGet]
         public IHttpActionResult QCDProjectSync()
         {
             try
             {
                 HttpClient httpClient = new HttpClient();
-                var syncList = httpClient.GetAsync("http://qcd.trechina.cn/qcdapi/projects?filter=all-projects").Result;
+                var syncList = httpClient.GetAsync("http://qcd.trechina.cn/qcdapi/Agreements").Result;
+                //var syncList = httpClient.GetAsync("http://172.17.100.15:8090/api/Agreements").Result;
                 var result = syncList.Content.ReadAsStringAsync().Result;
 
                 //API的项目信息取得
-                List<QcdProjects> pjList = JsonConvert.DeserializeObject<List<QcdProjects>>(result);
+                var pjList = JsonConvert.DeserializeObject<AgreementInfo>(result);
 
                 //数据库中的数据取得
                 List<Agreements> agreList = db_agora.Agreements.ToList();
-
+                var userUrl = GetMemberUrl();
                 int dbstate = 0;
 
                 if (agreList != null)
@@ -216,9 +289,9 @@ namespace GitLabManager.Controllers.API
                     //数据库中的最大ID取得（新规数据的情况下使用）
                     int maxId = agreList.Count > 0 ? agreList.Max(i => i.id):0;
 
-                    for (int i = 0; i < pjList.Count; i++)
+                    for (int i = 0; i < pjList.projectInfos.Count; i++)
                     {
-                        Agreements _agre = agreList.Where(cd => cd.agreement_cd == pjList[i].ProjectCode.ToString()).FirstOrDefault();
+                        Agreements _agre = agreList.Where(cd => cd.agreement_cd == pjList.projectInfos[i].ProjectCD.ToString()).FirstOrDefault();
 
                         int updateStatus = 0; // 初期状态
 
@@ -228,26 +301,80 @@ namespace GitLabManager.Controllers.API
                             _agre = new Agreements();
                             _agre.id = ++ maxId ;
                         }
+
+                        var member = pjList.memberInfos.Where(m => m.ProjectCD == pjList.projectInfos[i].ProjectCD).ToList();
+                        member = MemberConvert(member, userUrl);
+
+                        _agre.updated_at = DateTime.Now;
+
+                        if (updateStatus == 1)
+                        {
+                            _agre.agreement_cd = pjList.projectInfos[i].ProjectCD.ToString();
+                            _agre.agreement_name = pjList.projectInfos[i].ProjectName;
+                            _agre.status = pjList.projectInfos[i].status;
+                            _agre.plan_mandays = pjList.projectInfos[i].Manday;
+                            _agre.plan_begin_date = pjList.projectInfos[i].BeginDate;
+                            _agre.plan_end_date = pjList.projectInfos[i].EndDate;
+                            _agre.manager_id = pjList.projectInfos[i].LeaderCD;
+                            _agre.manager_name = pjList.projectInfos[i].LeaderName;
+                            _agre.member_ids = JsonConvert.SerializeObject(member);
+    
+                            db_agora.Agreements.Add(_agre);
+                        }
                         else
                         {
-                            if (_agre.agreement_name != pjList[i].ProjectName
-                                || _agre.status != pjList[i].status)
+                            if (_agre.agreement_name != pjList.projectInfos[i].ProjectName)
                             {
+                                _agre.agreement_name = pjList.projectInfos[i].ProjectName;
                                 updateStatus = 2; // 数据变更
                             }
-                        }
 
-                        if (updateStatus != 0)
-                        {
-                            _agre.agreement_cd = pjList[i].ProjectCode.ToString();
-                            _agre.agreement_name = pjList[i].ProjectName;
-                            _agre.status = pjList[i].status;
-                            _agre.updated_at = DateTime.Now;
-                            if (updateStatus == 1)
+                            if (_agre.status.ToString() != pjList.projectInfos[i].status.ToString())
                             {
-                                db_agora.Agreements.Add(_agre);
+                                _agre.status = pjList.projectInfos[i].status;
+                                updateStatus = 3; // 数据变更
                             }
-                            else
+
+                            if (_agre.plan_mandays != pjList.projectInfos[i].Manday)
+                            {
+                                _agre.plan_mandays = pjList.projectInfos[i].Manday;
+                                updateStatus = 4; // 数据变更
+                            }
+
+                            if (_agre.plan_begin_date != pjList.projectInfos[i].BeginDate)
+                            {
+                                _agre.plan_begin_date = pjList.projectInfos[i].BeginDate;
+                                updateStatus = 5; // 数据变更
+                            }
+
+                            if (_agre.plan_end_date != pjList.projectInfos[i].EndDate)
+                            {
+                                _agre.plan_end_date = pjList.projectInfos[i].EndDate;
+                                updateStatus = 6; // 数据变更
+                            }
+
+                            if (_agre.manager_id != pjList.projectInfos[i].LeaderCD)
+                            {
+                                _agre.manager_id = pjList.projectInfos[i].LeaderCD;
+                                updateStatus = 7; // 数据变更
+                            }
+
+                            if (_agre.manager_name != pjList.projectInfos[i].LeaderName)
+                            {
+                                _agre.manager_name = pjList.projectInfos[i].LeaderName;
+                                updateStatus = 8; // 数据变更
+                            }
+
+                            if (_agre.member_ids != JsonConvert.SerializeObject(member))
+                            {
+                                _agre.member_ids = JsonConvert.SerializeObject(member);
+                                updateStatus = 9; // 数据变更
+                            }
+
+                            //仓库数量计算
+                            _agre.project_count = GetWareHouseCount(_agre.repository_ids);
+
+                            if (updateStatus != 0)
                             {
                                 db_agora.Entry(_agre).State = EntityState.Modified;
                             }
@@ -406,6 +533,7 @@ namespace GitLabManager.Controllers.API
 
                 // 设定变更内容
                 _agre.repository_ids = req.gitlabProject.Count == 0 ? null :repositoryIds;
+                _agre.project_count = req.count;
                 _agre.updated_by = req.userId;
                 _agre.updated_at = DateTime.Now;
 
@@ -582,6 +710,32 @@ namespace GitLabManager.Controllers.API
             {
                 return Json(new { Success = false ,Message = ex.Message});
             }
+        }
+
+        public string StatusName(int StatusCode)
+        {
+            string StatusName = "";
+            switch (StatusCode)
+            {
+                case 1:
+                    StatusName = "1)見積中";
+                    break;
+                case 2:
+                    StatusName = "2)見積提出済";
+                    break;
+                case 3:
+                    StatusName = "3)受注済";
+                    break;
+                case 4:
+                    StatusName = "4)課題完了";
+                    break;
+                case 5:
+                    StatusName = "5)課題中止";
+                    break;
+                default:
+                    break;
+            }
+            return StatusName;
         }
     }
 }
