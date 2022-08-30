@@ -392,12 +392,26 @@ namespace GitLabManager.Controllers.API
             }
         }
 
+        private bool memberCheck(string data,string userID)
+        {
+            var members = JsonConvert.DeserializeObject<List<MemberInfo>>(data);
+            var result = members.Where(i => i.MemberID == userID);
+            if (result != null && result.Count() > 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         [HttpGet]
         public IHttpActionResult QCDProjectShow()
         {
             try
             {
-                // 数据种类 0：所有项目，1：进行中的，2：已结束的
+                // 数据种类 0：所有项目，1：进行中的，2：已结束的 3：我参与的（見積中，見積提出済，受注済）
                 string type = HttpContext.Current.Request.QueryString["type"];
 
                 // 用户ID
@@ -421,7 +435,7 @@ namespace GitLabManager.Controllers.API
                     pageNum = "1";
                 }
 
-                List<Agreements> agreList = new List<Agreements>();
+                var agreList = new List<Agreements>();
 
                 //数据库中的数据取得
                 if (type == "0")
@@ -434,10 +448,24 @@ namespace GitLabManager.Controllers.API
                     // 进行中的项目
                     agreList = db_agora.Agreements.Where(i => i.status == 1 || i.status == 2 || i.status == 3).ToList();
                 }
-                else 
+                else if (type == "2")
                 {
                     //结束和终止的项目
                     agreList = db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList();
+                }
+                else
+                {
+                    // 我参与的
+                    var all = db_agora.Agreements.ToList();
+                    foreach (var a in all)
+                    {
+                        if ((a.status == 1 || a.status == 2 || a.status == 3) 
+                            && (a.manager_id == userId || memberCheck(a.member_ids, userId)))
+                        {
+                            agreList.Add(a);
+                        }
+                    }
+                    //agreList = db_agora.Agreements.Where(i => (i.status == 1 || i.status == 2 || i.status == 3) && (i.manager_id == userId || memberCheck(i.member_ids,userId))).ToList();
                 }
 
                 if (projectInfo != null && projectInfo != String.Empty)
@@ -477,7 +505,8 @@ namespace GitLabManager.Controllers.API
 
                 List<Agreements> agreList = new List<Agreements>();
                 //全部的课题数量
-                int allCount = db_agora.Agreements.ToList().Count;
+                var all = db_agora.Agreements.ToList();
+                int allCount = all.Count;
 
                 //进行中的课题数量
                 int doingCount = db_agora.Agreements.Where(i => i.status == 1 || i.status == 2 || i.status == 3).ToList().Count;
@@ -485,7 +514,18 @@ namespace GitLabManager.Controllers.API
                 //结束和终止的课题数量
                 int endCount = db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList().Count;
 
-                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount });
+                foreach (var a in all)
+                {
+                    if ((a.status == 1 || a.status == 2 || a.status == 3)
+                        && (a.manager_id == userId || memberCheck(a.member_ids, userId)))
+                    {
+                        agreList.Add(a);
+                    }
+                }
+                // 我参与的
+                int myCount = agreList.Count;
+
+                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount , myCount = myCount });
             }
             catch
             {
