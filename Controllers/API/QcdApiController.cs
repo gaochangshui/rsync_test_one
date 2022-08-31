@@ -475,7 +475,7 @@ namespace GitLabManager.Controllers.API
                     agreList = agreList.Where(i => i.agreement_cd.IndexOf(projectInfo) >= 0 || i.agreement_name.ToLower().IndexOf(projectInfo.ToLower()) >= 0).ToList();
                 }
 
-                agreList = agreList.OrderBy(i => i.id).ToList();
+                agreList = agreList.OrderBy(i => i.updated_at).ToList();
 
                 int dataCount = agreList.Count;
                 //分页表示
