@@ -120,7 +120,7 @@ namespace GitLabManager.Controllers.API
             {
                 pn = Convert.ToInt32(pageNum);
             }
-            string sqlPage = "limit " + ps + " offset " + ( pn - 1 ) * ps;
+            string sqlPage = "limit " + ps + " offset " + (pn - 1) * ps;
             //sqlEnd = sqlEnd + sqlPage;
             if (pn == -1)
             {
@@ -131,8 +131,8 @@ namespace GitLabManager.Controllers.API
             int dataCnt = 0;
             if (projects != null && projects.Count > 0)
             {
-                string pjstr= " and p.id in ( ";
-                foreach(Project pj in projects)
+                string pjstr = " and p.id in ( ";
+                foreach (Project pj in projects)
                 {
                     pjstr += pj.id + ",";
                 }
@@ -163,7 +163,7 @@ namespace GitLabManager.Controllers.API
                 dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
                 list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
-            
+
             foreach (Warehouse li in list)
             {
                 //空对象处理
@@ -193,14 +193,14 @@ namespace GitLabManager.Controllers.API
             //page_.pageNumAll = (int)Math.Ceiling((double)dataCnt / page_.pageSize);
             return page_;
         }
-       
+
         /// <summary>
         ///  成员头像地址取得
         /// </summary>
         /// <returns></returns>
         public List<memberinfo> GetMemberUrl()
         {
-            var  allMembers = new List<memberinfo>();
+            var allMembers = new List<memberinfo>();
             string api = ConfigurationManager.AppSettings["gitlab_instance"];
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token5"]);
@@ -221,7 +221,7 @@ namespace GitLabManager.Controllers.API
                 }
                 var result = response.Content.ReadAsStringAsync().Result;
                 var list = JsonConvert.DeserializeObject<List<memberinfo>>(result);
-                foreach(var m in list)
+                foreach (var m in list)
                 {
                     allMembers.Add(m);
                 }
@@ -232,7 +232,7 @@ namespace GitLabManager.Controllers.API
 
         public List<MemberInfo> MemberConvert(List<MemberInfo> member, List<memberinfo> user)
         {
-            foreach(var m in member)
+            foreach (var m in member)
             {
                 var url = user.Where(u => u.username == m.MemberID).ToList();
                 if (url == null || url.Count == 0 || url[0].avatar_url == null || url[0].avatar_url == "")
@@ -287,7 +287,7 @@ namespace GitLabManager.Controllers.API
                 if (agreList != null)
                 {
                     //数据库中的最大ID取得（新规数据的情况下使用）
-                    int maxId = agreList.Count > 0 ? agreList.Max(i => i.id):0;
+                    int maxId = agreList.Count > 0 ? agreList.Max(i => i.id) : 0;
 
                     for (int i = 0; i < pjList.projectInfos.Count; i++)
                     {
@@ -299,7 +299,7 @@ namespace GitLabManager.Controllers.API
                         {
                             updateStatus = 1; // 新规数据
                             _agre = new Agreements();
-                            _agre.id = ++ maxId ;
+                            _agre.id = ++maxId;
                         }
 
                         var member = pjList.memberInfos.Where(m => m.ProjectCD == pjList.projectInfos[i].ProjectCD).ToList();
@@ -318,7 +318,7 @@ namespace GitLabManager.Controllers.API
                             _agre.manager_id = pjList.projectInfos[i].LeaderCD;
                             _agre.manager_name = pjList.projectInfos[i].LeaderName;
                             _agre.member_ids = JsonConvert.SerializeObject(member);
-    
+
                             db_agora.Agreements.Add(_agre);
                         }
                         else
@@ -384,15 +384,15 @@ namespace GitLabManager.Controllers.API
                     dbstate = db_agora.SaveChanges();
                 }
 
-                return Json(new { Success = dbstate > 0, state = dbstate ,Msg = "数据库更新成功"});
+                return Json(new { Success = dbstate > 0, state = dbstate, Msg = "数据库更新成功" });
             }
             catch (Exception ex)
             {
-                return Json(new { Success = false, state = -1,Msg = ex.Message });
+                return Json(new { Success = false, state = -1, Msg = ex.Message });
             }
         }
 
-        private bool memberCheck(string data,string userID)
+        private bool memberCheck(string data, string userID)
         {
             if (data == null || userID == null) return false;
             var members = JsonConvert.DeserializeObject<List<MemberInfo>>(data);
@@ -460,7 +460,7 @@ namespace GitLabManager.Controllers.API
                     var all = db_agora.Agreements.ToList();
                     foreach (var a in all)
                     {
-                        if ((a.status == 1 || a.status == 2 || a.status == 3) 
+                        if ((a.status == 1 || a.status == 2 || a.status == 3)
                             && (a.manager_id == userId || memberCheck(a.member_ids, userId)))
                         {
                             agreList.Add(a);
@@ -479,11 +479,19 @@ namespace GitLabManager.Controllers.API
 
                 int dataCount = agreList.Count;
                 //分页表示
-                agreList =  agreList.Skip((Convert.ToInt32(pageNum)-1)* Convert.ToInt32(pageSize)).Take(Convert.ToInt32(pageSize)).ToList();
+                agreList = agreList.Skip((Convert.ToInt32(pageNum) - 1) * Convert.ToInt32(pageSize)).Take(Convert.ToInt32(pageSize)).ToList();
+
+                var agreListReturn = new List<Agreements>();
+                foreach (var a in agreList)
+                {
+                    if (a.member_ids == null)
+                    { a.member_ids = "[]"; }
+                    agreListReturn.Add(a);
+                }
 
                 QcdProjectShow pj = new QcdProjectShow
                 {
-                    qcdProject = agreList,
+                    qcdProject = agreListReturn,
                     pageSize = Convert.ToInt32(pageSize),
                     pageNum = Convert.ToInt32(pageNum),
                     pageNumAll = dataCount
@@ -495,7 +503,6 @@ namespace GitLabManager.Controllers.API
                 return null;
             }
         }
-
         [HttpGet]
         public IHttpActionResult QCDProjectCount()
         {
@@ -526,7 +533,7 @@ namespace GitLabManager.Controllers.API
                 // 我参与的
                 int myCount = agreList.Count;
 
-                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount , myCount = myCount });
+                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount, myCount = myCount });
             }
             catch
             {
@@ -570,10 +577,10 @@ namespace GitLabManager.Controllers.API
                 Agreements _agre = db_agora.Agreements.Where(i => i.agreement_cd == req.id).FirstOrDefault();
 
                 //对象数据序列化
-                string repositoryIds  = JsonConvert.SerializeObject(req.gitlabProject);
+                string repositoryIds = JsonConvert.SerializeObject(req.gitlabProject);
 
                 // 设定变更内容
-                _agre.repository_ids = req.gitlabProject.Count == 0 ? null :repositoryIds;
+                _agre.repository_ids = req.gitlabProject.Count == 0 ? null : repositoryIds;
                 _agre.project_count = req.count;
                 _agre.updated_by = req.userId;
                 _agre.updated_at = DateTime.Now;
@@ -586,9 +593,9 @@ namespace GitLabManager.Controllers.API
 
                 return Json(new { Success = dbstate > 0, state = dbstate });
             }
-            catch 
-            { 
-                return null; 
+            catch
+            {
+                return null;
             }
         }
 
@@ -637,7 +644,7 @@ namespace GitLabManager.Controllers.API
                     }
 
                     List<Project> projects = ProjectsByID(pjID);
-                    if ( projects == null || projects.Count == 0)
+                    if (projects == null || projects.Count == 0)
                     {
                         return Json(page_);
                     }
@@ -702,14 +709,14 @@ namespace GitLabManager.Controllers.API
             sb.AppendLine("<br/>");
 
             //邮件正文（主要内容：代码相关信息）
-            for (int i = 0;i<req.reviewItem.Count; i++)
+            for (int i = 0; i < req.reviewItem.Count; i++)
             {
                 //代码地址取得
                 var response = httpClient.GetAsync(ConfigurationManager.AppSettings["gitlab_instance"] + "projects/" + req.reviewItem[i].projectId).Result;
                 var result = response.Content.ReadAsStringAsync().Result;
                 SingleProject project = JsonConvert.DeserializeObject<SingleProject>(result);
 
-                sb.AppendLine("地址" + (i + 1).ToString()  + "：<a href=" + project.web_url + ">" + project.web_url + "</a><br/>");
+                sb.AppendLine("地址" + (i + 1).ToString() + "：<a href=" + project.web_url + ">" + project.web_url + "</a><br/>");
                 sb.AppendLine("分支：" + req.reviewItem[i].branchName + "(<a href = " + req.reviewItem[i].branchUrl + ">" + req.reviewItem[i].branchUrl + "</a>)<br/>");
                 sb.AppendLine("语言：" + req.reviewItem[i].language + "<br/>");
                 sb.AppendLine("数据库：" + req.reviewItem[i].dataBase + "<br/>");
@@ -719,7 +726,7 @@ namespace GitLabManager.Controllers.API
             //邮件正文（评审相关信息）
             sb.AppendLine("评审信息：" + req.reviewInfo + "<br/>");
             sb.AppendLine("期望完成日期：" + req.expecteDate + "<br/>");
-            if (req.comment != null && req.comment !="")
+            if (req.comment != null && req.comment != "")
             {
                 sb.AppendLine("备注：" + req.comment + "<br/>");
             }
@@ -737,7 +744,7 @@ namespace GitLabManager.Controllers.API
                 // 收件人(多人用“,”分开)
                 string strTo = "technicalcommittee@cn.tre-inc.com";
                 // 抄送人(多人用“,”分开)
-                string strCc = "qualityassurance@cn.tre-inc.com"; 
+                string strCc = "qualityassurance@cn.tre-inc.com";
 
                 //邮件发送
                 smtp.SendMail(user.email, strTo, strCc, title, sb.ToString());
@@ -745,11 +752,11 @@ namespace GitLabManager.Controllers.API
                 // 审查者权限设定
                 ProjectPermissionSet(req);
 
-                return Json(new { Success = true ,Message = "处理成功！"});
+                return Json(new { Success = true, Message = "处理成功！" });
             }
-            catch( Exception ex)
+            catch (Exception ex)
             {
-                return Json(new { Success = false ,Message = ex.Message});
+                return Json(new { Success = false, Message = ex.Message });
             }
         }
 
