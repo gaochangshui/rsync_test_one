@@ -394,6 +394,7 @@ namespace GitLabManager.Controllers.API
 
         private bool memberCheck(string data,string userID)
         {
+            if (data == null || userID == null) return false;
             var members = JsonConvert.DeserializeObject<List<MemberInfo>>(data);
             var result = members.Where(i => i.MemberID == userID);
             if (result != null && result.Count() > 0)
