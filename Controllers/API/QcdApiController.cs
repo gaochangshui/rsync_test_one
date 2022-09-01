@@ -284,6 +284,8 @@ namespace GitLabManager.Controllers.API
                 var userUrl = GetMemberUrl();
                 int dbstate = 0;
 
+                var  existList = new List<Agreements>();
+
                 if (agreList != null)
                 {
                     //数据库中的最大ID取得（新规数据的情况下使用）
@@ -323,6 +325,8 @@ namespace GitLabManager.Controllers.API
                         }
                         else
                         {
+                            //保存同期前存在的项目
+                            existList.Add(_agre);
                             if (_agre.agreement_name != pjList.projectInfos[i].ProjectName)
                             {
                                 _agre.agreement_name = pjList.projectInfos[i].ProjectName;
@@ -381,6 +385,15 @@ namespace GitLabManager.Controllers.API
                         }
                     }
 
+                    // 删除项目
+                    foreach (var a in agreList)
+                    {
+                        var hasItem = existList.Where(i => i.agreement_cd == a.agreement_cd).ToList();
+                        if (hasItem == null || hasItem.Count == 0)
+                        {
+                            db_agora.Entry(a).State = EntityState.Deleted;
+                        }
+                    }
                     dbstate = db_agora.SaveChanges();
                 }
 
