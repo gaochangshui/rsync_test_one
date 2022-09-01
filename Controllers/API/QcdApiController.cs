@@ -449,6 +449,9 @@ namespace GitLabManager.Controllers.API
                     pageNum = "1";
                 }
 
+                // 标星项目检索
+                var starList = db_agora.UsersStarAgreements.Where(i => i.user_id == userId).ToList();
+
                 var agreList = new List<Agreements>();
 
                 //数据库中的数据取得
@@ -493,13 +496,20 @@ namespace GitLabManager.Controllers.API
                 int dataCount = agreList.Count;
                 //分页表示
                 agreList = agreList.Skip((Convert.ToInt32(pageNum) - 1) * Convert.ToInt32(pageSize)).Take(Convert.ToInt32(pageSize)).ToList();
+                var agreListReturn = new List<AgreementsWithStar>();
 
-                var agreListReturn = new List<Agreements>();
                 foreach (var a in agreList)
                 {
-                    if (a.member_ids == null)
-                    { a.member_ids = "[]"; }
-                    agreListReturn.Add(a);
+                    var addStar = new AgreementsWithStar();
+                    // 没有设定成员的处理
+                    if (a.member_ids == null) { a.member_ids = "[]"; }
+                    addStar.agreement = a;
+
+                    //标星项目处理
+                    var star = starList.Where(i => i.agreement_cd == a.agreement_cd).FirstOrDefault();
+                    addStar.IsStar = (star != null);
+
+                    agreListReturn.Add(addStar);
                 }
 
                 QcdProjectShow pj = new QcdProjectShow
@@ -535,6 +545,7 @@ namespace GitLabManager.Controllers.API
                 //结束和终止的课题数量
                 int endCount = db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList().Count;
 
+                // 我参与的
                 foreach (var a in all)
                 {
                     if ((a.status == 1 || a.status == 2 || a.status == 3)
@@ -543,12 +554,14 @@ namespace GitLabManager.Controllers.API
                         agreList.Add(a);
                     }
                 }
-                // 我参与的
                 int myCount = agreList.Count;
 
-                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount, myCount = myCount });
+                //标星项目
+                int starCount = db_agora.UsersStarAgreements.Where(i => i.user_id == userId).ToList().Count;
+
+                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount, myCount = myCount , starCount  = starCount });
             }
-            catch
+            catch(Exception ex)
             {
                 return null;
             }
@@ -604,6 +617,38 @@ namespace GitLabManager.Controllers.API
                 // 保存数据变更
                 int dbstate = db_agora.SaveChanges();
 
+                return Json(new { Success = dbstate > 0, state = dbstate });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        [HttpPost]
+        public IHttpActionResult QCDProjectStarSetting(UserStarReq req)
+        {
+            try
+            {
+                // 根据id检索出既存信息
+                var _star = db_agora.UsersStarAgreements.Where(i => i.user_id == req.userId && i.agreement_cd == req.agreement_cd).FirstOrDefault();
+
+                if (req.flag == false && _star != null) // 取消标星
+                {
+                    db_agora.Entry(_star).State = EntityState.Deleted;
+                }
+                else if (_star == null && req.flag == true)
+                {
+                    _star = new UsersStarAgreements();
+                    _star.user_id = req.userId;
+                    _star.agreement_cd = req.agreement_cd;
+                    _star.created_at = DateTime.Now;
+                    _star.updated_at = DateTime.Now;
+                    db_agora.Entry(_star).State = EntityState.Added;
+                }
+
+                // 保存数据变更
+                int dbstate = db_agora.SaveChanges();
                 return Json(new { Success = dbstate > 0, state = dbstate });
             }
             catch

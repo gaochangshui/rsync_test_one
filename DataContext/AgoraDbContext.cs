@@ -11,9 +11,10 @@ namespace GitLabManager.DataContext
         {
 
         }
+
         public virtual DbSet<ProjectSyncSettings> ProjectSyncSettings { get; set; }
         public virtual DbSet<Agreements> Agreements { get; set; }
 
-
+        public virtual DbSet<UsersStarAgreements> UsersStarAgreements { get; set; }
     }
 }

@@ -45,12 +45,28 @@ namespace GitLabManager.Models
         public string project_count { get; set; }
     }
 
+    public class AgreementsWithStar
+    {
+        public Agreements agreement { get; set; }
+        public bool IsStar { get; set; }
+    }
+        [Table("users_star_agreements", Schema = "public")]
+    public class UsersStarAgreements
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+        public int id { get; set; }
+        public string agreement_cd { get; set; }
+        public string user_id { get; set; }
+        public DateTime created_at { get; set; }
+        public DateTime updated_at { get; set; }
+    }
+
     public class QcdProjectShow
     {
         public int pageSize { get; set; }
         public int pageNum { get; set; }
         public int pageNumAll { get; set; }
-        public List<Agreements> qcdProject { get; set; }
+        public List<AgreementsWithStar> qcdProject { get; set; }
     }
 
     public class QCDProjectSettingsReq
@@ -59,6 +75,13 @@ namespace GitLabManager.Models
         public string id { get; set; }
         public string count { get; set; }
         public List<Projects> gitlabProject { get; set; }
+    }
+
+    public class UserStarReq
+    {
+        public string userId { get; set; }
+        public string agreement_cd { get; set; }
+        public bool flag { get; set; }
     }
 
     [Table("projects", Schema = "public")]
