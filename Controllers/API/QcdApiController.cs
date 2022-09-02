@@ -639,7 +639,11 @@ namespace GitLabManager.Controllers.API
                 }
                 else if (_star == null && req.flag == true)
                 {
+                    var _all = db_agora.UsersStarAgreements.ToList();
+                    int maxId = _all.Count > 0 ? _all.Max(i => i.id) : 0;
+
                     _star = new UsersStarAgreements();
+                    _star.id = ++maxId;
                     _star.user_id = req.userId;
                     _star.agreement_cd = req.agreement_cd;
                     _star.created_at = DateTime.Now;
