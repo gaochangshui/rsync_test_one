@@ -58,6 +58,7 @@ namespace GitLabManager.Controllers
                 var userUrl = qcdApi.GetMemberUrl();
 
                 int dbstate = 0;
+                var existList = new List<Agreements>();
 
                 if (agreList != null)
                 {
@@ -97,6 +98,9 @@ namespace GitLabManager.Controllers
                         }
                         else
                         {
+                            //保存同期前存在的项目
+                            existList.Add(_agre);
+
                             if (_agre.agreement_name != pjList.projectInfos[i].ProjectName)
                             {
                                 _agre.agreement_name = pjList.projectInfos[i].ProjectName;
@@ -152,6 +156,16 @@ namespace GitLabManager.Controllers
                             {
                                 db_agora.Entry(_agre).State = EntityState.Modified;
                             }
+                        }
+                    }
+
+                    // 删除项目
+                    foreach (var a in agreList)
+                    {
+                        var delItem = existList.Where(i => i.agreement_cd == a.agreement_cd).ToList();
+                        if (delItem == null || delItem.Count == 0)
+                        {
+                            db_agora.Entry(a).State = EntityState.Deleted;
                         }
                     }
 
