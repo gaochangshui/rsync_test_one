@@ -764,8 +764,20 @@ namespace GitLabManager.Controllers.API
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
 
             StringBuilder sb = new StringBuilder();
-
             User user = db.Users.Where(i => i.username.Equals(req.userId)).FirstOrDefault();
+
+            // 项目成员邮件取得(CC人员)
+            string memberEmails = "";
+            var agreList = db_agora.Agreements.Where(i => i.agreement_cd == req.id).FirstOrDefault();
+            var memlist = JsonConvert.DeserializeObject<List<MemberInfo>>(agreList.member_ids);
+            foreach (var mem in memlist)
+            {
+                var u = db.Users.Where(i => i.username.Equals(mem.MemberID)).FirstOrDefault();
+                if (u != null && u.email !=null && u.email != "")
+                {
+                    memberEmails = memberEmails + u.email + ",";
+                }
+            }
 
             // 邮件标题
             string title = "【" + req.id + ":" + req.name + " 】项目核心代码审查申请";
@@ -815,7 +827,7 @@ namespace GitLabManager.Controllers.API
                 // 收件人(多人用“,”分开)
                 string strTo = "technicalcommittee@cn.tre-inc.com";
                 // 抄送人(多人用“,”分开)
-                string strCc = "qualityassurance@cn.tre-inc.com";
+                string strCc = memberEmails + "qualityassurance@cn.tre-inc.com";
 
                 //邮件发送
                 smtp.SendMail(user.email, strTo, strCc, title, sb.ToString());
