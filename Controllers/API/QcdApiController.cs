@@ -425,7 +425,7 @@ namespace GitLabManager.Controllers.API
         {
             try
             {
-                // 数据种类 0：所有项目，1：进行中的，2：已结束的 3：我参与的（見積中，見積提出済，受注済）
+                // 数据种类 0：所有项目，1：进行中的，2：已结束的 3：我参与的（見積中，見積提出済，受注済）4:标星项目
                 string type = HttpContext.Current.Request.QueryString["type"];
 
                 // 用户ID
@@ -470,7 +470,7 @@ namespace GitLabManager.Controllers.API
                     //结束和终止的项目
                     agreList = db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList();
                 }
-                else
+                else if (type == "3")
                 {
                     // 我参与的
                     var all = db_agora.Agreements.ToList();
@@ -482,7 +482,16 @@ namespace GitLabManager.Controllers.API
                             agreList.Add(a);
                         }
                     }
-                    //agreList = db_agora.Agreements.Where(i => (i.status == 1 || i.status == 2 || i.status == 3) && (i.manager_id == userId || memberCheck(i.member_ids,userId))).ToList();
+                }
+                else
+                {
+                    // 标星项目
+                    var all = db_agora.Agreements.ToList();
+                    foreach (var s in starList)
+                    {
+                        var agreById = db_agora.Agreements.Where(i => i.agreement_cd == s.agreement_cd).FirstOrDefault();
+                        agreList.Add(agreById);
+                    }
                 }
 
                 if (projectInfo != null && projectInfo != String.Empty)
