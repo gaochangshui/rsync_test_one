@@ -425,7 +425,7 @@ namespace GitLabManager.Controllers.API
         {
             try
             {
-                // 数据种类 0：所有项目，1：进行中的，2：已结束的 3：我参与的（見積中，見積提出済，受注済）
+                // 数据种类 0：所有项目，1：进行中的，2：已结束的 3：我参与的（見積中，見積提出済，受注済）4:标星项目
                 string type = HttpContext.Current.Request.QueryString["type"];
 
                 // 用户ID
@@ -470,7 +470,7 @@ namespace GitLabManager.Controllers.API
                     //结束和终止的项目
                     agreList = db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList();
                 }
-                else
+                else if (type == "3")
                 {
                     // 我参与的
                     var all = db_agora.Agreements.ToList();
@@ -482,7 +482,16 @@ namespace GitLabManager.Controllers.API
                             agreList.Add(a);
                         }
                     }
-                    //agreList = db_agora.Agreements.Where(i => (i.status == 1 || i.status == 2 || i.status == 3) && (i.manager_id == userId || memberCheck(i.member_ids,userId))).ToList();
+                }
+                else
+                {
+                    // 标星项目
+                    var all = db_agora.Agreements.ToList();
+                    foreach (var s in starList)
+                    {
+                        var agreById = db_agora.Agreements.Where(i => i.agreement_cd == s.agreement_cd).FirstOrDefault();
+                        agreList.Add(agreById);
+                    }
                 }
 
                 if (projectInfo != null && projectInfo != String.Empty)
@@ -639,7 +648,11 @@ namespace GitLabManager.Controllers.API
                 }
                 else if (_star == null && req.flag == true)
                 {
+                    var _all = db_agora.UsersStarAgreements.ToList();
+                    int maxId = _all.Count > 0 ? _all.Max(i => i.id) : 0;
+
                     _star = new UsersStarAgreements();
+                    _star.id = ++maxId;
                     _star.user_id = req.userId;
                     _star.agreement_cd = req.agreement_cd;
                     _star.created_at = DateTime.Now;
@@ -751,8 +764,20 @@ namespace GitLabManager.Controllers.API
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
 
             StringBuilder sb = new StringBuilder();
-
             User user = db.Users.Where(i => i.username.Equals(req.userId)).FirstOrDefault();
+
+            // 项目成员邮件取得(CC人员)
+            string memberEmails = "";
+            var agreList = db_agora.Agreements.Where(i => i.agreement_cd == req.id).FirstOrDefault();
+            var memlist = JsonConvert.DeserializeObject<List<MemberInfo>>(agreList.member_ids);
+            foreach (var mem in memlist)
+            {
+                var u = db.Users.Where(i => i.username.Equals(mem.MemberID)).FirstOrDefault();
+                if (u != null && u.email !=null && u.email != "")
+                {
+                    memberEmails = memberEmails + u.email + ",";
+                }
+            }
 
             // 邮件标题
             string title = "【" + req.id + ":" + req.name + " 】项目核心代码审查申请";
@@ -802,7 +827,7 @@ namespace GitLabManager.Controllers.API
                 // 收件人(多人用“,”分开)
                 string strTo = "technicalcommittee@cn.tre-inc.com";
                 // 抄送人(多人用“,”分开)
-                string strCc = "qualityassurance@cn.tre-inc.com";
+                string strCc = memberEmails + "qualityassurance@cn.tre-inc.com";
 
                 //邮件发送
                 smtp.SendMail(user.email, strTo, strCc, title, sb.ToString());
