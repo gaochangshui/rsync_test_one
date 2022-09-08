@@ -132,14 +132,14 @@ namespace GitLabManager.Controllers.API
         }
 
         [HttpGet]
-        public IHttpActionResult ProjectsIStarrd()
+        public IHttpActionResult ProjectsIStarred()
         {
             string user_cd = HttpContext.Current.Request.QueryString["user_cd"];
             
             string pagesize = HttpContext.Current.Request.QueryString["pageSize"];
             string pageNum = HttpContext.Current.Request.QueryString["pageNum"];
 
-            List<Project> projects = ProjectsIStarrd(user_cd);
+            List<Project> projects = ProjectsIStarred(user_cd);
             Page_Warehouses page = new Page_Warehouses();
             if (projects.Count > 0)
             {
@@ -158,8 +158,8 @@ namespace GitLabManager.Controllers.API
             int allProjNum = GetWarehouses(null, null, "-1", null, new List<Project>()).rowCount;
             int myProjNum = ProjectsIInvolved(user_cd).Count;
             int tempProjNum = ProjectsInGroup().Count;
-            int starrdProjNum = ProjectsIStarrd(user_cd).Count;
-            var num = new { all = allProjNum ,my = myProjNum ,temp = tempProjNum , starrd = starrdProjNum };
+            int starredProjNum = ProjectsIStarred(user_cd).Count;
+            var num = new { all = allProjNum ,my = myProjNum ,temp = tempProjNum , starred = starredProjNum };
             return Json(new { Success = true, num = num });
         }
         private List<Project> ProjectsIInvolved(string user_cd)
@@ -260,7 +260,7 @@ namespace GitLabManager.Controllers.API
                 return new List<Project>();
             }
         }
-        private List<Project> ProjectsIStarrd(string user_cd)
+        private List<Project> ProjectsIStarred(string user_cd)
         {
             try
             {
