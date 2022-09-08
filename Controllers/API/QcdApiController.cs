@@ -707,12 +707,12 @@ namespace GitLabManager.Controllers.API
 
                     foreach (var p in pjList)
                     {
-                        string spaceId = db.Projects.Where(i => i.id == p.id).First().namespace_id;
-                        string spaceName = db.NameSpaces.Where(i => i.id.ToString() == spaceId).First().name;
+                        Projects pj = db.Projects.Where(i => i.id == p.id).FirstOrDefault();
+                        string spaceName = db.NameSpaces.Where(i => i.id.ToString() == pj.namespace_id).First().name;
                         var pv = new ReturnProjectView
                         {
                             id = p.id,
-                            name = spaceName + " / " + p.name,
+                            name = spaceName + " / " + pj.name,
                             description = p.description,
                             spacename = spaceName
                         };
