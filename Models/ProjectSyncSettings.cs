@@ -90,7 +90,16 @@ namespace GitLabManager.Models
         [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
         public int id { get; set; }
         public string name { get; set; }
+        public string namespace_id { get; set; }
         public string description { get; set; }
+    }
+
+    [Table("namespaces", Schema = "public")]
+    public class NameSpaces
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+        public int id { get; set; }
+        public string name { get; set; }
     }
 
     public class QCDCodeReviewReq
