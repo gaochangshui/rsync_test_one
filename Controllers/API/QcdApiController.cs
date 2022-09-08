@@ -595,7 +595,24 @@ namespace GitLabManager.Controllers.API
                     pjInfo = pjInfo.Where(i => i.name.IndexOf(name) >= 0).ToList();
                 }
 
-                return Json(pjInfo);
+                // 课题的命名空间取得
+                var  nameSpaces = db.NameSpaces.ToList();
+                var  retList = new List<ReturnProjectView>();
+
+                foreach (var p in pjInfo)
+                {
+                    string spaceName = nameSpaces.Where(i => i.id.ToString() == p.namespace_id).First().name;
+                    var pv = new ReturnProjectView
+                    {
+                        id = p.id,
+                        name = spaceName + " / " + p.name,
+                        description = p.description,
+                        spacename = spaceName
+                    };
+                    retList.Add(pv);
+                }
+
+                return Json(retList);
             }
             catch
             {
@@ -663,6 +680,51 @@ namespace GitLabManager.Controllers.API
                 // 保存数据变更
                 int dbstate = db_agora.SaveChanges();
                 return Json(new { Success = dbstate > 0, state = dbstate });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        [HttpGet]
+        public IHttpActionResult QCDProjectInfoDetail()
+        {
+            try
+            {
+                // 用户ID
+                string userId = HttpContext.Current.Request.QueryString["userId"];
+                string id = HttpContext.Current.Request.QueryString["id"];
+
+                // 根据id检索出既存信息
+                Agreements _agre = db_agora.Agreements.Where(i => i.agreement_cd == id).FirstOrDefault();
+
+                if (_agre != null && _agre.repository_ids != null)
+                {
+                    // json数据反序列化
+                    List<Projects> pjList = JsonConvert.DeserializeObject<List<Projects>>(_agre.repository_ids);
+                    var retList = new List<ReturnProjectView>();
+
+                    foreach (var p in pjList)
+                    {
+                        string spaceId = db.Projects.Where(i => i.id == p.id).First().namespace_id;
+                        string spaceName = db.NameSpaces.Where(i => i.id.ToString() == spaceId).First().name;
+                        var pv = new ReturnProjectView
+                        {
+                            id = p.id,
+                            name = spaceName + " / " + p.name,
+                            description = p.description,
+                            spacename = spaceName
+                        };
+                        retList.Add(pv);
+                    }
+
+                    return Json(retList);
+                }
+                else
+                {
+                    return Json(new ReturnProjectView { });
+                }
             }
             catch
             {
@@ -841,6 +903,14 @@ namespace GitLabManager.Controllers.API
             {
                 return Json(new { Success = false, Message = ex.Message });
             }
+        }
+
+        public class ReturnProjectView
+        {
+            public int id { get; set; }
+            public string name { get; set; }
+            public string description { get; set; }
+            public string spacename { get; set ;}
         }
 
         public string StatusName(int StatusCode)
