@@ -780,5 +780,96 @@ namespace GitLabManager.Controllers.API
             return Json(new { Success = isSuccess, Message = messageInfo });
         }
 
+        [HttpGet]
+        public IHttpActionResult SendDingDingMsg()
+        {
+            try
+            {
+                // 昨日
+                string yday = DateTime.Now.AddDays(-1).ToShortDateString();
+
+                // 昨日没有提交代码的人员取得
+                var users = NoUploadCodeUsers();
+
+                // 钉钉代理ID取得
+                long AgentId = long.Parse(ConfigurationManager.AppSettings["AgentId"]);
+                DingTalkClientBLL client = new DingTalkClientBLL();
+                string AccessToken = client.GetToken();
+
+                foreach (var u in users)
+                {
+                    // 钉钉个人用户id取得
+                    string dingDingId = UsersController.getDingDingId(u.EmployeeCD);
+                    if (dingDingId != "")
+                    {
+                        // 通知内容
+                        string Msg = "【未提交代码通知】:\n" + ""
+                            + u.EmployeeName + "您好，您在项目【" + u.PJCD + "：" + u.PJName + "】中，【"
+                            + yday + "】 日的QCD实际登录为开发类型，却没有相关的代码提交，特此通知。";
+
+                        // 发送通知
+                        client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
+                    }
+                }
+
+                return Json(new { success = true ,message = ""});
+            } 
+            catch (Exception ex)
+            {
+                return Json(new { success = true, message = ex.Message});
+            }
+        }
+
+        private List<NoCodeUserMode> NoUploadCodeUsers()
+        {
+            try
+            {
+                string day = DateTime.Now.AddDays(-1).ToString("yyyyMMdd");
+
+                // gitlab 用户信息取得（用户名）
+                var _users = db.Users.ToList();
+
+                // 项目信息取得（课题名）
+                var _agre = db_agora.Agreements.ToList();
+
+                // 昨日没有登录代码的人员和项目号取得
+                string api = "http://172.17.1.60:8097/api/get_data.cgi?day=" + day;
+                var httpClient = new HttpClient();
+                var response = httpClient.GetAsync(api).Result;
+                var result = response.Content.ReadAsStringAsync().Result;
+                var list = JsonConvert.DeserializeObject<List<NoCodeUserMode>>(result);
+
+                // 根据人员CD和项目CD 添加用户名
+                foreach (var i in list)
+                {
+                    var uname = _users.Where(u => u.username == i.EmployeeCD).FirstOrDefault();
+                    if (uname != null && uname.name != null)
+                    {
+                        i.EmployeeName = uname.name;
+                    }
+
+                    var qcd = _agre.Where(a => a.agreement_cd == i.PJCD).FirstOrDefault();
+                    if(qcd != null && qcd.agreement_name != null)
+                    {
+                        i.PJName = qcd.agreement_name;
+                    }
+                }
+
+                // 结果返回
+                return list;
+            }
+            catch (Exception ex)
+            {
+                return new List<NoCodeUserMode>();
+            }
+        }
+
+        private class NoCodeUserMode
+        {
+            public string EmployeeCD { get; set; }
+            public string PJCD { get; set; }
+            public string PJName { get; set; }
+            public string EmployeeName { get; set; }
+        }
     }
 }
