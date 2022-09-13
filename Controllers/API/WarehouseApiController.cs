@@ -93,6 +93,9 @@ namespace GitLabManager.Controllers.API
         [HttpGet]
         public IHttpActionResult ProjectsIInvolved()
         {
+            string pj_name = HttpContext.Current.Request.QueryString["pj_name"];
+            string group_name = HttpContext.Current.Request.QueryString["group_name"];
+
             string user_cd = HttpContext.Current.Request.QueryString["user_cd"];
 
             string pagesize = HttpContext.Current.Request.QueryString["pageSize"];
@@ -102,7 +105,7 @@ namespace GitLabManager.Controllers.API
             Page_Warehouses page = new Page_Warehouses();
             if (projects.Count > 0)
             {
-                page = GetWarehouses(null, null, pageNum, pagesize, projects);
+                page = GetWarehouses(pj_name, group_name, pageNum, pagesize, projects);
                 return Json(page);
             }
             page.rowCount = 0;
@@ -382,7 +385,7 @@ namespace GitLabManager.Controllers.API
             }
             else
             {
-                msql = sql + " and  n.name ilike '%" + group_name + "%' or p.name ilike '%" + pj_name + "%' ";
+                msql = sql + " and (n.name ilike '%" + group_name + "%' or p.name ilike '%" + pj_name + "%') ";
                 dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
                 list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
