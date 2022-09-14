@@ -100,6 +100,8 @@ namespace GitLabManager.Models
         [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
         public int id { get; set; }
         public string name { get; set; }
+        public string type { get; set; }
+        public string parent_id { get; set; }
     }
 
     public class QCDCodeReviewReq

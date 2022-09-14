@@ -17,6 +17,7 @@ using System.Web.Http;
 using LibGit2Sharp;
 using System.IO;
 using GitLabManager.DataContext;
+using System.Threading;
 
 namespace GitLabManager.Controllers.API
 {
@@ -786,32 +787,57 @@ namespace GitLabManager.Controllers.API
         [HttpGet]
         public IHttpActionResult SendDingDingMsg()
         {
+            string parentFolder = System.AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
+            string logFile = parentFolder + "\\send_dinging_log.txt";
+            StreamWriter sws = null;
+
+            Directory.CreateDirectory(parentFolder);
+            sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
+
             try
             {
                 // 昨日
-                string yday = DateTime.Now.AddDays(-1).ToShortDateString();
-
+                string yday = DateTime.Now.AddDays(-1).ToString("yyyyMMdd");
                 // 昨日没有提交代码的人员取得
-                var users = NoUploadCodeUsers();
+                var users = NoUploadCodeUsers(yday);
+
+                if (users == null || users.Count == 0)
+                {
+                    // 没有数据日志
+                    string logTxt = "没有获取到" + yday + "日的数据！";
+                    sws.WriteLine(logTxt);
+                    return Json(new { success = true, message = "no data!" });
+                }
 
                 // 钉钉代理ID取得
                 long AgentId = long.Parse(ConfigurationManager.AppSettings["AgentId"]);
                 DingTalkClientBLL client = new DingTalkClientBLL();
                 string AccessToken = client.GetToken();
 
+                var  httpClient = new HttpClient();
                 foreach (var u in users)
                 {
                     // 钉钉个人用户id取得
-                    string dingDingId = UsersController.getDingDingId(u.EmployeeCD);
+                    string dingDingId = GetDingDingId(u.EmployeeCD, httpClient);
                     if (dingDingId != "")
                     {
                         // 通知内容
-                        string Msg = "【未提交代码通知】:\n" + ""
-                            + u.EmployeeName + "您好，您在项目【" + u.PJCD + "：" + u.PJName + "】中，【"
-                            + yday + "】 日的QCD实际登录为开发类型，却没有相关的代码提交，特此通知。";
+                        string Msg = "未推送代码通知:\n系统检测到"
+                            + yday + "，QCD系统中实绩登录了开发（"
+                            + u.PJCD + " " + u.PJName
+                            + "），但是未推送代码到GitLab平台，请确认。如有疑问，请联系业务改革部 刘淼。";
 
                         // 发送通知
                         client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
+
+                        // 发送成功日志
+                        string logTxt ="通知日期：" + yday;
+                        logTxt += ", 通知人员：" + u.EmployeeCD + "_";
+                        logTxt += u.EmployeeName == null ? "" : u.EmployeeName;
+                        logTxt += ", 通知项目：" + u.PJCD + "_" + u.PJName;
+                        logTxt += ", 通知状态：发送成功";
+
+                        sws.WriteLine(logTxt);
                     }
                 }
 
@@ -821,14 +847,35 @@ namespace GitLabManager.Controllers.API
             {
                 return Json(new { success = true, message = ex.Message});
             }
+            finally
+            {
+                sws.Close();
+            }
         }
 
-        private List<NoCodeUserMode> NoUploadCodeUsers()
+        private  string GetDingDingId(String cd, HttpClient httpClient)
+        {
+            Thread.Sleep(500);
+            var responseforback = httpClient.GetAsync("https://trechina.cn/APIv1/UsersDing?usercd=" + cd).Result.Content.ReadAsStringAsync().Result;
+            try
+            {
+                    List<UserDingDing> userDings = JsonConvert.DeserializeObject<List<UserDingDing>>(responseforback);
+                    if (userDings.Count == 1)
+                    {
+                        return userDings[0].DingID;
+                    }
+            }
+            catch (Exception ex)
+            {
+                string err = ex.Message;
+            }
+            return "";
+        }
+
+        private List<NoCodeUserMode> NoUploadCodeUsers(string day)
         {
             try
             {
-                string day = DateTime.Now.AddDays(-1).ToString("yyyyMMdd");
-
                 // gitlab 用户信息取得（用户名）
                 var _users = db.Users.ToList();
 
@@ -865,6 +912,15 @@ namespace GitLabManager.Controllers.API
             {
                 return new List<NoCodeUserMode>();
             }
+        }
+
+        private class UserDingDing
+        {
+            public string UserCD { get; set; }
+            public string UserName { get; set; }
+            public string DingID { get; set; }
+            public string CreateDate { get; set; }
+            public string UpdateDate { get; set; }
         }
 
         private class NoCodeUserMode

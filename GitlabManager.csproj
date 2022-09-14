@@ -196,6 +196,7 @@
     <Compile Include="Controllers\API\UsersApiController.cs" />
     <Compile Include="Controllers\API\QcdApiController.cs" />
     <Compile Include="Controllers\API\WarehouseApiController.cs" />
+    <Compile Include="Controllers\API\ProjectsController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\JobController.cs" />
     <Compile Include="Controllers\UsersController.cs" />
