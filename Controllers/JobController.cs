@@ -28,6 +28,14 @@ namespace GitLabManager.Controllers
                 {
                     QCDProjectSync();
                 }
+
+                // 昨日代码未推送人员钉钉通知
+                if (dt.Hour == 10 && dt.Minute == 0) // 每天10点执行
+                {
+                    var wac = new WarehouseApiController();
+                    wac.SendDingDingMsg();
+                }
+
             };
         }
 
