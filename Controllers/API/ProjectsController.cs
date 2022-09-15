@@ -34,20 +34,24 @@ namespace GitLabManager.Controllers.API
                 var rootGroup = allGroups.Where(i => i.parent_id == null).ToList();
 
                 List<NameSpaces> nameSpaces = new List<NameSpaces>();
-                foreach (var nameSpace in rootGroup)
+                string resultJson = StringJson("start");
+
+                for (var i = 0; i < rootGroup.Count; i++)
                 {
                     // 顶级群组内容表示变换
                     var ns = new NameSpaces
                     {
-                        id = nameSpace.id,
-                        name = nameSpace.name,
-                        nameView = NameView(nameSpace.id)
+                        id = rootGroup[i].id,
+                        name = rootGroup[i].name,
+                        nameView = NameView(rootGroup[i].id)
                     };
                     nameSpaces.Add(ns);
 
                     // 子节点组数据取得
-                    var _ = ChildrenData(nameSpace.id.ToString(), allGroups);
+                    resultJson = ChildrenData(rootGroup[i], allGroups, resultJson,i , rootGroup.Count);
                 }
+
+                resultJson += StringJson("end");
 
                 return Json(nameSpaces);
             }
@@ -57,23 +61,28 @@ namespace GitLabManager.Controllers.API
             }
         }
 
-        private string ChildrenData(string id ,List<Models.NameSpaces> allGroups)
+        private string ChildrenData(Models.NameSpaces ns ,List<Models.NameSpaces> allGroups,string resultJson,int current,int allCount)
         {
-            var subGroup = allGroups.Where(i => i.parent_id == id).ToList();
+            resultJson += StringJson("body_start", ns.id.ToString(), ns.name);
+
+            var subGroup = allGroups.Where(i => i.parent_id == ns.id.ToString()).ToList();
             if (subGroup == null || subGroup.Count == 0)
             {
-                // todo
+                if (current != allCount - 1)
+                {
+                    resultJson += StringJson("comma");
+                }
             }
             else
             {
-                foreach (var s in subGroup)
+                for (var i = 0; i < subGroup.Count; i++)
                 {
-                    ChildrenData(s.id.ToString(), allGroups);
+                    resultJson = ChildrenData(subGroup[i], allGroups, resultJson,i, subGroup.Count);
                 }
             }
-
-            return "";
+            return resultJson;
         }
+
         private class NameSpaces
         {
             public int id { get; set; }
@@ -107,5 +116,30 @@ namespace GitLabManager.Controllers.API
             return nameView;
         }
 
+        private string StringJson(string flag,string value ="",string label = "")
+        {
+            string jsonPart = "";
+            switch (flag)
+            {
+                case "start":
+                    jsonPart = "[";
+                    break;
+                case "body_start":
+                    jsonPart = "{\"value\": \""+ value + "\",\"label\": \"" + label + "\",\"children\":[";
+                    break;
+                case "body_end":
+                    jsonPart = "]}";
+                    break;
+                case "comma":
+                    jsonPart = ",";
+                    break;
+                case "end":
+                    jsonPart = "]";
+                    break;
+                default:
+                    break;
+            }
+            return jsonPart;
+        }
     }
 }
