@@ -819,26 +819,25 @@ namespace GitLabManager.Controllers.API
                 {
                     // 钉钉个人用户id取得
                     string dingDingId = GetDingDingId(u.EmployeeCD, httpClient);
-                    if (dingDingId != "")
-                    {
-                        // 通知内容
-                        string Msg = "未推送代码通知:\n系统检测到"
-                            + yday + "，QCD系统中实绩登录了开发（"
-                            + u.PJCD + " " + u.PJName
-                            + "），但是未推送代码到GitLab平台，请确认。如有疑问，请联系业务改革部 刘淼。";
 
-                        // 发送通知
-                        client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
+                    // 通知内容
+                    string Msg = "未推送代码通知:\n系统检测到"
+                        + yday + "，QCD系统中实绩登录了开发（"
+                        + u.PJCD + " " + u.PJName
+                        + "），但是未推送代码到GitLab平台，请确认。如有疑问，请联系本日担当 未振军。"
+                        + "\n代码审计和帮助请参考：http://docs.trechina.cn/docs/code_management/audit_rules";
 
-                        // 发送成功日志
-                        string logTxt ="通知日期：" + yday;
-                        logTxt += ", 通知人员：" + u.EmployeeCD + "_";
-                        logTxt += u.EmployeeName == null ? "" : u.EmployeeName;
-                        logTxt += ", 通知项目：" + u.PJCD + "_" + u.PJName;
-                        logTxt += ", 通知状态：发送成功";
+                    // 发送通知
+                    client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
 
-                        sws.WriteLine(logTxt);
-                    }
+                    // 发送成功日志
+                    string logTxt ="通知日期：" + yday;
+                    logTxt += ", 通知人员：" + u.EmployeeCD + "_";
+                    logTxt += u.EmployeeName == null ? "" : u.EmployeeName;
+                    logTxt += ", 通知项目：" + u.PJCD + "_" + u.PJName;
+                    logTxt += ", 通知状态：发送成功";
+
+                    sws.WriteLine(logTxt);
                 }
 
                 return Json(new { success = true ,message = ""});
