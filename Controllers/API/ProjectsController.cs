@@ -19,12 +19,8 @@ namespace GitLabManager.Controllers.API
         public static AgoraDbContext db_agora = new AgoraDbContext();
 
         [HttpGet]
-        public IHttpActionResult GetRootGroup()
+        public IHttpActionResult GetLocationGroup()
         {
-            // string id = HttpContext.Current.Request.QueryString["id"];
-            // var api = ConfigurationManager.AppSettings["gitlab_instance"];
-            // var token = ConfigurationManager.AppSettings["gitlab_token1"];
-
             try
             {
                 // 有效的所有群组
@@ -48,12 +44,19 @@ namespace GitLabManager.Controllers.API
                     nameSpaces.Add(ns);
 
                     // 子节点组数据取得
-                    resultJson = ChildrenData(rootGroup[i], allGroups, resultJson,i , rootGroup.Count);
+                    resultJson += StringJson("body_start", ns.id.ToString(), ns.name);
+
+                    resultJson = ChildrenData(rootGroup[i], allGroups, resultJson, i, rootGroup.Count);
+
+                    if (i != rootGroup.Count - 1)
+                    {
+                        resultJson += StringJson("comma");
+                    }
                 }
 
                 resultJson += StringJson("end");
 
-                return Json(nameSpaces);
+                return Json(new { location = nameSpaces,group = resultJson });
             }
             catch (Exception ex)
             {
@@ -63,21 +66,25 @@ namespace GitLabManager.Controllers.API
 
         private string ChildrenData(Models.NameSpaces ns ,List<Models.NameSpaces> allGroups,string resultJson,int current,int allCount)
         {
-            resultJson += StringJson("body_start", ns.id.ToString(), ns.name);
-
             var subGroup = allGroups.Where(i => i.parent_id == ns.id.ToString()).ToList();
             if (subGroup == null || subGroup.Count == 0)
             {
-                if (current != allCount - 1)
-                {
-                    resultJson += StringJson("comma");
-                }
+                resultJson += StringJson("body_end");
             }
             else
             {
                 for (var i = 0; i < subGroup.Count; i++)
                 {
+                    resultJson += StringJson("body_start", subGroup[i].id.ToString(), subGroup[i].name);
                     resultJson = ChildrenData(subGroup[i], allGroups, resultJson,i, subGroup.Count);
+                    if (i != subGroup.Count - 1)
+                    {
+                        resultJson += StringJson("comma");
+                    }
+                    else
+                    {
+                        resultJson += StringJson("body_end");
+                    }
                 }
             }
             return resultJson;
