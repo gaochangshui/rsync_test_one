@@ -22,7 +22,7 @@ namespace GitLabManager.Controllers.API
                 HttpContext.Current.Response.Cookies["LoginedUserWeb"].Value = model.WebUrl;
                 HttpContext.Current.Response.Cookies["UserRole"].Value = AccountController.getUserRole(model.UserCD);
                 HttpContext.Current.Response.Cookies["ClientIP"].Value = HttpContext.Current.Request.ServerVariables["HTTP_X_FORWARDED_FOR"];
-                return Ok(model);
+                return Json(new { UserCD = model.UserCD});
             }
             ModelState.AddModelError("", "UserCode or Password is invalid.");
             return Ok(ModelState);
