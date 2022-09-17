@@ -9,6 +9,8 @@ using GitLabManager.DataContext;
 using GitLabManager.Models;
 using System.Configuration;
 using Newtonsoft.Json;
+using LibGit2Sharp;
+using System.IO;
 
 namespace GitLabManager.Controllers.API
 {
@@ -45,8 +47,7 @@ namespace GitLabManager.Controllers.API
 
                     // 子节点组数据取得
                     resultJson += StringJson("body_start", ns.id.ToString(), ns.name);
-
-                    resultJson = ChildrenData(rootGroup[i], allGroups, resultJson, i, rootGroup.Count);
+                    resultJson = ChildrenData(rootGroup[i], allGroups, resultJson);
 
                     if (i != rootGroup.Count - 1)
                     {
@@ -64,7 +65,35 @@ namespace GitLabManager.Controllers.API
             }
         }
 
-        private string ChildrenData(Models.NameSpaces ns ,List<Models.NameSpaces> allGroups,string resultJson,int current,int allCount)
+        /// <summary>
+        /// Git 忽略文件列表做成
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        public IHttpActionResult GetIgnoreList()
+        {
+            try
+            {
+                string folder = System.AppDomain.CurrentDomain.BaseDirectory + "\\Template\\gitignore";
+                Directory.CreateDirectory(folder);
+                var files = Directory.GetFiles(folder);
+                var ignoreList = new List<string>();
+
+                foreach (var file in files)
+                {
+                    ignoreList.Add(Path.GetFileName(file));
+                }
+                
+                return Json(ignoreList);
+            }
+            catch (Exception ex)
+            {
+                return Json(new List<string>());
+            }
+        }
+
+
+        private string ChildrenData(Models.NameSpaces ns ,List<Models.NameSpaces> allGroups,string resultJson)
         {
             var subGroup = allGroups.Where(i => i.parent_id == ns.id.ToString()).ToList();
             if (subGroup == null || subGroup.Count == 0)
@@ -76,7 +105,7 @@ namespace GitLabManager.Controllers.API
                 for (var i = 0; i < subGroup.Count; i++)
                 {
                     resultJson += StringJson("body_start", subGroup[i].id.ToString(), subGroup[i].name);
-                    resultJson = ChildrenData(subGroup[i], allGroups, resultJson,i, subGroup.Count);
+                    resultJson = ChildrenData(subGroup[i], allGroups, resultJson);
                     if (i != subGroup.Count - 1)
                     {
                         resultJson += StringJson("comma");

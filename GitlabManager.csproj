@@ -252,6 +252,8 @@
   <ItemGroup>
     <Folder Include="App_Data\" />
     <Folder Include="DLL\" />
+    <Folder Include="Template\gitignore\" />
+    <Folder Include="Template\readme\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="fonts\glyphicons-halflings-regular.woff2" />
