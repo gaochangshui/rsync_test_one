@@ -17,6 +17,7 @@ using System.Web.Http;
 using LibGit2Sharp;
 using System.IO;
 using GitLabManager.DataContext;
+using System.Threading;
 
 namespace GitLabManager.Controllers.API
 {
@@ -93,6 +94,9 @@ namespace GitLabManager.Controllers.API
         [HttpGet]
         public IHttpActionResult ProjectsIInvolved()
         {
+            string pj_name = HttpContext.Current.Request.QueryString["pj_name"];
+            string group_name = HttpContext.Current.Request.QueryString["group_name"];
+
             string user_cd = HttpContext.Current.Request.QueryString["user_cd"];
 
             string pagesize = HttpContext.Current.Request.QueryString["pageSize"];
@@ -102,7 +106,7 @@ namespace GitLabManager.Controllers.API
             Page_Warehouses page = new Page_Warehouses();
             if (projects.Count > 0)
             {
-                page = GetWarehouses(null, null, pageNum, pagesize, projects);
+                page = GetWarehouses(pj_name, group_name, pageNum, pagesize, projects);
                 return Json(page);
             }
             page.rowCount = 0;
@@ -382,7 +386,7 @@ namespace GitLabManager.Controllers.API
             }
             else
             {
-                msql = sql + " and  n.name ilike '%" + group_name + "%' or p.name ilike '%" + pj_name + "%' ";
+                msql = sql + " and (n.name ilike '%" + group_name + "%' or p.name ilike '%" + pj_name + "%') ";
                 dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
                 list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
@@ -780,5 +784,150 @@ namespace GitLabManager.Controllers.API
             return Json(new { Success = isSuccess, Message = messageInfo });
         }
 
+        [HttpGet]
+        public IHttpActionResult SendDingDingMsg()
+        {
+            string parentFolder = System.AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
+            string logFile = parentFolder + "\\send_dinging_log.txt";
+            StreamWriter sws = null;
+
+            Directory.CreateDirectory(parentFolder);
+            sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
+
+            try
+            {
+                // 昨日
+                string yday = DateTime.Now.AddDays(-1).ToString("yyyyMMdd");
+                // 昨日没有提交代码的人员取得
+                var users = NoUploadCodeUsers(yday);
+
+                if (users == null || users.Count == 0)
+                {
+                    // 没有数据日志
+                    string logTxt = "没有获取到" + yday + "日的数据！";
+                    sws.WriteLine(logTxt);
+                    return Json(new { success = true, message = "no data!" });
+                }
+
+                // 钉钉代理ID取得
+                long AgentId = long.Parse(ConfigurationManager.AppSettings["AgentId"]);
+                DingTalkClientBLL client = new DingTalkClientBLL();
+                string AccessToken = client.GetToken();
+
+                var  httpClient = new HttpClient();
+                foreach (var u in users)
+                {
+                    // 钉钉个人用户id取得
+                    string dingDingId = GetDingDingId(u.EmployeeCD, httpClient);
+
+                    // 通知内容
+                    string Msg = "未推送代码通知:\n系统检测到"
+                        + yday + "，QCD系统中实绩登录了开发（"
+                        + u.PJCD + " " + u.PJName
+                        + "），但是未推送代码到GitLab平台，请确认。如有疑问，请联系本日担当 未振军。"
+                        + "\n代码审计和帮助请参考：http://docs.trechina.cn/docs/code_management/audit_rules";
+
+                    // 发送通知
+                    client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
+
+                    // 发送成功日志
+                    string logTxt ="通知日期：" + yday;
+                    logTxt += ", 通知人员：" + u.EmployeeCD + "_";
+                    logTxt += u.EmployeeName == null ? "" : u.EmployeeName;
+                    logTxt += ", 通知项目：" + u.PJCD + "_" + u.PJName;
+                    logTxt += ", 通知状态：发送成功";
+
+                    sws.WriteLine(logTxt);
+                }
+
+                return Json(new { success = true ,message = ""});
+            } 
+            catch (Exception ex)
+            {
+                return Json(new { success = true, message = ex.Message});
+            }
+            finally
+            {
+                sws.Close();
+            }
+        }
+
+        private  string GetDingDingId(String cd, HttpClient httpClient)
+        {
+            Thread.Sleep(500);
+            var responseforback = httpClient.GetAsync("https://trechina.cn/APIv1/UsersDing?usercd=" + cd).Result.Content.ReadAsStringAsync().Result;
+            try
+            {
+                    List<UserDingDing> userDings = JsonConvert.DeserializeObject<List<UserDingDing>>(responseforback);
+                    if (userDings.Count == 1)
+                    {
+                        return userDings[0].DingID;
+                    }
+            }
+            catch (Exception ex)
+            {
+                string err = ex.Message;
+            }
+            return "";
+        }
+
+        private List<NoCodeUserMode> NoUploadCodeUsers(string day)
+        {
+            try
+            {
+                // gitlab 用户信息取得（用户名）
+                var _users = db.Users.ToList();
+
+                // 项目信息取得（课题名）
+                var _agre = db_agora.Agreements.ToList();
+
+                // 昨日没有登录代码的人员和项目号取得
+                string api = "http://172.17.1.60:8097/api/get_data.cgi?day=" + day;
+                var httpClient = new HttpClient();
+                var response = httpClient.GetAsync(api).Result;
+                var result = response.Content.ReadAsStringAsync().Result;
+                var list = JsonConvert.DeserializeObject<List<NoCodeUserMode>>(result);
+
+                // 根据人员CD和项目CD 添加用户名
+                foreach (var i in list)
+                {
+                    var uname = _users.Where(u => u.username == i.EmployeeCD).FirstOrDefault();
+                    if (uname != null && uname.name != null)
+                    {
+                        i.EmployeeName = uname.name;
+                    }
+
+                    var qcd = _agre.Where(a => a.agreement_cd == i.PJCD).FirstOrDefault();
+                    if(qcd != null && qcd.agreement_name != null)
+                    {
+                        i.PJName = qcd.agreement_name;
+                    }
+                }
+
+                // 结果返回
+                return list;
+            }
+            catch (Exception ex)
+            {
+                return new List<NoCodeUserMode>();
+            }
+        }
+
+        private class UserDingDing
+        {
+            public string UserCD { get; set; }
+            public string UserName { get; set; }
+            public string DingID { get; set; }
+            public string CreateDate { get; set; }
+            public string UpdateDate { get; set; }
+        }
+
+        private class NoCodeUserMode
+        {
+            public string EmployeeCD { get; set; }
+            public string PJCD { get; set; }
+            public string PJName { get; set; }
+            public string EmployeeName { get; set; }
+        }
     }
 }
