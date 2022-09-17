@@ -92,6 +92,29 @@ namespace GitLabManager.Controllers.API
             }
         }
 
+        [HttpPost]
+        public IHttpActionResult CreatWareHouse()
+        {
+            try
+            {
+                string folder = System.AppDomain.CurrentDomain.BaseDirectory + "\\Template\\gitignore";
+                Directory.CreateDirectory(folder);
+                var files = Directory.GetFiles(folder);
+                var ignoreList = new List<string>();
+
+                foreach (var file in files)
+                {
+                    ignoreList.Add(Path.GetFileName(file));
+                }
+
+                return Json(ignoreList);
+            }
+            catch (Exception ex)
+            {
+                return Json(new List<string>());
+            }
+        }
+
 
         private string ChildrenData(Models.NameSpaces ns ,List<Models.NameSpaces> allGroups,string resultJson)
         {
