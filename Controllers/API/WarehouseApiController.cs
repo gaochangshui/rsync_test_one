@@ -386,7 +386,7 @@ namespace GitLabManager.Controllers.API
             }
             else
             {
-                msql = sql + " and (n.name ilike '%" + group_name + "%' or p.name ilike '%" + pj_name + "%') ";
+                msql = sql + " and (n.name ilike '%" + group_name + "%' or p.name ilike '%" + pj_name + "%' or p.description ilike '%"+ pj_name + "%') ";
                 dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
                 list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
