@@ -490,7 +490,10 @@ namespace GitLabManager.Controllers.API
                     foreach (var s in starList)
                     {
                         var agreById = db_agora.Agreements.Where(i => i.agreement_cd == s.agreement_cd).FirstOrDefault();
-                        agreList.Add(agreById);
+                        if (agreById != null)
+                        {
+                            agreList.Add(agreById);
+                        }
                     }
                 }
 
@@ -566,7 +569,17 @@ namespace GitLabManager.Controllers.API
                 int myCount = agreList.Count;
 
                 //标星项目
-                int starCount = db_agora.UsersStarAgreements.Where(i => i.user_id == userId).ToList().Count;
+                var starCount = 0;
+                var starList = db_agora.UsersStarAgreements.Where(i => i.user_id == userId).ToList();
+
+                foreach (var s in starList)
+                {
+                    var agreById = all.Where(i => i.agreement_cd == s.agreement_cd).FirstOrDefault();
+                    if (agreById != null)
+                    {
+                        starCount += 1;
+                    }
+                }
 
                 return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount, myCount = myCount , starCount  = starCount });
             }
