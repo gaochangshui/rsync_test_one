@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Web;
+using System.Data.Entity;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -7,6 +7,7 @@ using System.Web.Http;
 using GitlabManager.DataContext;
 using GitLabManager.DataContext;
 using GitlabManager.Models;
+using GitLabManager.Models;
 using System.Configuration;
 using Newtonsoft.Json;
 using LibGit2Sharp;
@@ -100,18 +101,17 @@ namespace GitLabManager.Controllers.API
         {
             try
             {
-                string http_url_to_repo = "http://172.17.5.146/public-playground/2200714/newProject.git";
-                InitProject(http_url_to_repo, req);
-
-                return null;
                 // 1.调用api创建仓库(设定成员、使用期限)
                 var ret = CreateWareHouse(req.name, req.location, req.description,req.user_id,req.expiryDate);
 
                 if (ret != null && ret.flag == true)
                 {
-                    // 2.初期化仓库(readme，gitignore)
+                    // 2.初期化仓库(readme，gitignore,创建默认分支)
                     InitProject(ret.http_url_to_repo, req);
                 }
+
+                // 3.关联QCD项目
+                SetQcdProject(req,ret);
 
                 return Json(ret);
             }
@@ -121,6 +121,43 @@ namespace GitLabManager.Controllers.API
             }
         }
 
+        private void SetQcdProject(WHCreateReq req,ReturnResult rr)
+        {
+            // 根据id检索出既存信息
+            var _agre = db_agora.Agreements.Where(i => i.agreement_cd == req.qcdId).FirstOrDefault();
+            if (_agre != null && _agre.repository_ids != null)
+            {
+                // json数据反序列化
+                List<Projects> pjList = JsonConvert.DeserializeObject<List<Projects>>(_agre.repository_ids);
+
+                // 添加新仓库关联信息
+                var newPj = new Projects
+                {
+                    id = Convert.ToInt16(rr.id),
+                    namespace_id = req.location,
+                    name = rr.np.name + " / " + req.name,
+                    description = req.description
+                };
+
+                pjList.Add(newPj);
+
+                //对象数据序列化
+                string repositoryIds = JsonConvert.SerializeObject(pjList);
+
+                // 设定变更内容
+                _agre.repository_ids = repositoryIds;
+                _agre.project_count = _agre.project_count == null ? "1" : (Convert.ToInt32(_agre.project_count) + 1).ToString();
+                _agre.updated_by = req.user_id;
+                _agre.updated_at = DateTime.Now;
+
+                // 标记数据更新状态
+                db_agora.Entry(_agre).State = EntityState.Modified;
+
+                // 保存数据变更
+                int dbstate = db_agora.SaveChanges();
+
+            }
+        }
         private void InitProject(string web_url, WHCreateReq req)
         {
             string tmpWork = AppDomain.CurrentDomain.BaseDirectory + "\\TempWork";
@@ -148,18 +185,21 @@ namespace GitLabManager.Controllers.API
                 sws.Close();
 
                 // 4. readme 文件做成
-                string source = AppDomain.CurrentDomain.BaseDirectory + "\\Template\\readme\\" + req.readmePrefix + "_readme.md";
-                File.Copy(source, baseFolder + "\\readme.md");
+                string source = AppDomain.CurrentDomain.BaseDirectory + "\\Template\\readme\\" + req.readmePrefix + "_README.md";
+                File.Copy(source, baseFolder + "\\README.md",true);
 
                 // 5. gitignore 文件做成
                 source = AppDomain.CurrentDomain.BaseDirectory + "\\Template\\gitignore\\" + req.gitignore;
-                File.Copy(source, baseFolder + "\\.gitignore");
+                File.Copy(source, baseFolder + "\\.gitignore",true);
 
                 // 6.main 分支代码push
-                PushMainBranch(token, baseFolder);
+                var isSuccess = PushMainBranch(token, baseFolder);
 
-                // 7.根据分支策略创建其他分支
-                PushOrtherBranch();
+                if (isSuccess)
+                {
+                    // 7.根据分支策略创建其他分支
+                    PushOrtherBranch(token, baseFolder, req.branchType);
+                }
 
                 // 删除作业文件夹
                 Directory.Delete(baseFolder, true);
@@ -170,18 +210,95 @@ namespace GitLabManager.Controllers.API
             }
         }
 
-        private void PushMainBranch(string token,string repository)
+        private bool PushMainBranch(string token,string repository)
         {
-            // push认证信息
-            var pushOption = new PushOptions()
+            try
             {
-                CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = "oauth2", Password = token }
-            };
-        }
-        private void PushOrtherBranch()
-        {
+                using (var repo = new Repository(@repository))
+                {
+                    var remote = repo.Network.Remotes["origin"];
+
+                    string pushRefSpec = @"refs/heads/main";
+
+                    // 创建做成者(提交者)
+                    var author = new Signature("Administrator", "gitlab-admin@cn.tre-inc.com", DateTimeOffset.Now);
+
+                    // 暂存变更文件
+                    Commands.Stage(repo, "*");
+
+                    // 本地提交
+                    repo.Commit("main分支初期化", author, author);
+
+                    // push认证信息
+                    var pushOption = new PushOptions()
+                    {
+                        CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = "oauth2", Password = token }
+                    };
+
+                    // 推送代码到远程
+                    repo.Network.Push(remote, pushRefSpec, pushOption);
+
+                    return true;
+                }
+            }
+            catch(Exception ex)
+            {
+                return false;
+            }
 
         }
+
+        private bool PushOrtherBranch(string token, string repository,string branchType)
+        {
+            try
+            {
+                using (var repo = new Repository(@repository))
+                {
+                    //取得远程源信息
+                    Remote remote = repo.Network.Remotes["origin"];
+
+                    var branches = BranchList(branchType);
+                    if (branches == null || branches.Count == 0)
+                    {
+                        return true;
+                    }
+
+                    foreach (var branch in branches)
+                    {
+                        // 取得本地分支
+                        var localBranch = repo.Branches[branch];
+
+                        if (localBranch == null)
+                        {
+                            // 本地分支不存在的情况下则创建本地分支
+                            localBranch = repo.CreateBranch(branch);
+                        }
+
+                        // 关联远程分支
+                        repo.Branches.Update(localBranch,
+                            b => b.Remote = remote.Name,
+                            b => b.UpstreamBranch = localBranch.CanonicalName);
+
+                        // 认证信息
+                        var pushOption = new PushOptions()
+                        {
+                            CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = "oauth2", Password = token }
+                        };
+
+                        // 推送代码到远程仓库
+                        repo.Network.Push(localBranch, pushOption);
+                    }
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+          
+        }
+
         private ReturnResult CreateWareHouse(string name, string location_id, string description,string user_id, string expDate)
         {
             string  result = "";
@@ -199,7 +316,10 @@ namespace GitLabManager.Controllers.API
                 var httpContent = new FormUrlEncodedContent(new List<KeyValuePair<string, string>> {
                         new KeyValuePair<string, string>("name", name),
                         new KeyValuePair<string, string>("namespace_id", location_id),
-                        new KeyValuePair<string, string>("description", description) });
+                        new KeyValuePair<string, string>("description", description),
+                        new KeyValuePair<string, string>("default_branch","main"),
+                        new KeyValuePair<string, string>("initialize_with_readme","true")
+                });
 
                 var response = httpClient.PostAsync(api, httpContent).Result;
                 result = response.Content.ReadAsStringAsync().Result;
@@ -293,8 +413,14 @@ namespace GitLabManager.Controllers.API
             public string web_url { get; set; }
             public string http_url_to_repo { get; set; }
             public Links _links { get; set; }
+            public Namespace np { get; set; }
             public string message { get; set; }
             public bool flag { get; set; }
+        }
+
+        public class Namespace
+        {
+            public string name { get; set; }
         }
 
         public class Links
@@ -326,6 +452,32 @@ namespace GitLabManager.Controllers.API
                     break;
             }
             return nameView;
+        }
+
+        public List<string> BranchList(string branchType)
+        {
+           List<string> branchList = null;
+            switch (branchType)
+            {
+                case "1":
+                    branchList = new List<string> {};
+                    break;
+                case "2":
+                    branchList = new List<string> { "develop" };
+                    break;
+                case "3":
+                    branchList = new List<string> { "develop","feature" };
+                    break;
+                case "4":
+                    branchList = new List<string> {  "develop", "feature","release" };
+                    break;
+                case "5":
+                    branchList = new List<string> { "develop", "feature", "release","hotfix"};
+                    break;
+                default:
+                    break;
+            }
+            return branchList;
         }
 
         private string StringJson(string flag,string value ="",string label = "")
