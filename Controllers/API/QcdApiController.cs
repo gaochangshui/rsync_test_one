@@ -924,6 +924,31 @@ namespace GitLabManager.Controllers.API
             public string name { get; set; }
             public string description { get; set; }
             public string spacename { get; set ;}
+            public bool repo_flg  { get; set; } = true;
+        }
+
+        [HttpPost]
+        public IHttpActionResult QCDProjectIsUseGitlab(IsUseGitlabReq req)
+        {
+            try
+            {
+                var _agre = db_agora.Agreements.Where(i => i.agreement_cd == req.agreement_cd).FirstOrDefault();
+
+                _agre.repo_flg = req.is_use;
+                _agre.updated_by = req.user_id;
+                _agre.updated_at = DateTime.Now;
+
+                // 标记数据更新状态
+                db_agora.Entry(_agre).State = EntityState.Modified;
+
+                // 保存数据变更
+                int dbstate = db_agora.SaveChanges();
+                return Json(new {success = true});
+            }
+            catch
+            {
+                return Json(new { success = false });
+            }
         }
 
         public string StatusName(int StatusCode)
