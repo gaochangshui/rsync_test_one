@@ -824,7 +824,7 @@ namespace GitLabManager.Controllers.API
                     string Msg = "未推送代码通知:\n系统检测到"
                         + yday + "，QCD系统中实绩登录了开发（"
                         + u.PJCD + " " + u.PJName
-                        + "），但是未推送代码到GitLab平台，请确认。如有疑问，请联系本日担当 未振军。"
+                        + "），但是未推送代码到GitLab平台，请确认。如有疑问，请联系本日担当 刘淼。"
                         + "\n代码审计和帮助请参考：http://docs.trechina.cn/docs/code_management/audit_rules";
 
                     // 发送通知

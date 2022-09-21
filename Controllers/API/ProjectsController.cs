@@ -101,7 +101,7 @@ namespace GitLabManager.Controllers.API
         {
             try
             {
-                // 1.调用api创建仓库(设定成员、使用期限)
+                // 1.调用api创建仓库(设定成员权限、使用期限)
                 var ret = CreateWareHouse(req.name, req.location, req.description,req.user_id,req.expiryDate);
 
                 if (ret != null && ret.flag == true)
@@ -125,24 +125,33 @@ namespace GitLabManager.Controllers.API
         {
             // 根据id检索出既存信息
             var _agre = db_agora.Agreements.Where(i => i.agreement_cd == req.qcdId).FirstOrDefault();
-            if (_agre != null && _agre.repository_ids != null)
+
+            if (_agre != null )
             {
-                // json数据反序列化
-                List<Projects> pjList = JsonConvert.DeserializeObject<List<Projects>>(_agre.repository_ids);
+                List <Projects> pjList = new List <Projects>();
+
+                if (_agre.repository_ids != null)
+                {
+                    // json数据反序列化
+                    pjList = JsonConvert.DeserializeObject<List<Projects>>(_agre.repository_ids);
+                }
+
+                string[] path = rr.web_url.Split('/');
+                var dir = path [path.Length - 2];
 
                 // 添加新仓库关联信息
                 var newPj = new Projects
                 {
                     id = Convert.ToInt16(rr.id),
                     namespace_id = req.location,
-                    name = rr.np.name + " / " + req.name,
+                    name = dir + " / " + req.name,
                     description = req.description
                 };
 
                 pjList.Add(newPj);
 
                 //对象数据序列化
-                string repositoryIds = JsonConvert.SerializeObject(pjList);
+                var repositoryIds = JsonConvert.SerializeObject(pjList);
 
                 // 设定变更内容
                 _agre.repository_ids = repositoryIds;
@@ -155,9 +164,9 @@ namespace GitLabManager.Controllers.API
 
                 // 保存数据变更
                 int dbstate = db_agora.SaveChanges();
-
             }
         }
+
         private void InitProject(string web_url, WHCreateReq req)
         {
             string tmpWork = AppDomain.CurrentDomain.BaseDirectory + "\\TempWork";
@@ -202,11 +211,11 @@ namespace GitLabManager.Controllers.API
                 }
 
                 // 删除作业文件夹
-                Directory.Delete(baseFolder, true);
+                try { Directory.Delete(baseFolder, true); } catch { };
             } 
             catch(Exception ex)
             {
-                Directory.Delete(baseFolder, true);
+                try { Directory.Delete(baseFolder, true); } catch { };
             }
         }
 
@@ -301,18 +310,18 @@ namespace GitLabManager.Controllers.API
 
         private ReturnResult CreateWareHouse(string name, string location_id, string description,string user_id, string expDate)
         {
-            string  result = "";
+            string result = "";
+            string errMsg = "仓库创建失败;";
             string token = ConfigurationManager.AppSettings["gitlab_token1"];
             string api = ConfigurationManager.AppSettings["gitlab_instance"] + "projects";
 
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", token);
-
-            //返回结果定义
             var rr = new ReturnResult();
 
             try
             {
+                // 1. 仓库创建
                 var httpContent = new FormUrlEncodedContent(new List<KeyValuePair<string, string>> {
                         new KeyValuePair<string, string>("name", name),
                         new KeyValuePair<string, string>("namespace_id", location_id),
@@ -320,41 +329,28 @@ namespace GitLabManager.Controllers.API
                         new KeyValuePair<string, string>("default_branch","main"),
                         new KeyValuePair<string, string>("initialize_with_readme","true")
                 });
-
                 var response = httpClient.PostAsync(api, httpContent).Result;
                 result = response.Content.ReadAsStringAsync().Result;
-
                 rr = JsonConvert.DeserializeObject<ReturnResult>(result);
-                rr.message = "仓库创建成功";
-            }
-            catch (Exception ex)
-            {
-                rr.message = "仓库创建失败;" + result;
-                rr.flag = false;
-                return rr;
-            }
-
-            try 
-            { 
-                // 取得申请者信息
+                
+                // 2. 添加成员，设定权限和使用期限
+                errMsg = "仓库创建成功，添加成员，设定有效期限失败;";
                 User user = db.Users.Where(i => i.username.Equals(user_id)).FirstOrDefault();
-
-                // 仓库添加成员(申请者)，设定仓库有效期限
-                var httpContent = new FormUrlEncodedContent(new List<KeyValuePair<string, string>> {
+                httpContent = new FormUrlEncodedContent(new List<KeyValuePair<string, string>> {
                         new KeyValuePair<string, string>("user_id", user.id.ToString()),
                         new KeyValuePair<string, string>("expires_at", expDate),
                         new KeyValuePair<string, string>("access_level", "40")
                 });
-
-                var response = httpClient.PostAsync(rr._links.members, httpContent).Result;
+                response = httpClient.PostAsync(rr._links.members, httpContent).Result;
                 result = response.Content.ReadAsStringAsync().Result;
 
+                rr.message = "仓库创建成功";
                 rr.flag = true;
                 return rr;
             }
             catch (Exception ex)
             {
-                rr.message = "仓库创建成功，添加成员，设定有效期限失败！;" + ex.Message;
+                rr.message = errMsg + result;
                 rr.flag = false;
                 return rr;
             }
@@ -413,14 +409,8 @@ namespace GitLabManager.Controllers.API
             public string web_url { get; set; }
             public string http_url_to_repo { get; set; }
             public Links _links { get; set; }
-            public Namespace np { get; set; }
             public string message { get; set; }
             public bool flag { get; set; }
-        }
-
-        public class Namespace
-        {
-            public string name { get; set; }
         }
 
         public class Links
