@@ -775,13 +775,24 @@ namespace GitLabManager.Controllers.API
                 isSuccess = false;
             }
 
-            //作业文件夹删除
-            if (Directory.Exists(baseFolder))
-            {
-                try {  Directory.Delete(baseFolder, true); } catch{}
-            }
+            // 删除作业文件夹
+            DirectoryInfo dir = new DirectoryInfo(@baseFolder);
+            SetGitFilesNormal(dir);
+            Directory.Delete(@baseFolder, true);
 
             return Json(new { Success = isSuccess, Message = messageInfo });
+        }
+        private void SetGitFilesNormal(DirectoryInfo directory)
+        {
+            foreach (FileInfo fi in directory.GetFiles())
+            {
+                fi.IsReadOnly = false;
+            }
+
+            foreach (DirectoryInfo subdir in directory.GetDirectories())
+            {
+                SetGitFilesNormal(subdir);
+            }
         }
 
         [HttpGet]

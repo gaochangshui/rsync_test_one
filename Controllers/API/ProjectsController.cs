@@ -101,6 +101,12 @@ namespace GitLabManager.Controllers.API
         {
             try
             {
+                // 判断仓库名是否存在
+                if (IsWareHouseExists(req.name,req.location) == true)
+                {
+                    return Json(new ReturnResult() { flag = false, message = "仓库名字已经存在！" });
+                }
+
                 // 1.调用api创建仓库(设定成员权限、使用期限)
                 var ret = CreateWareHouse(req.name, req.location, req.description,req.user_id,req.expiryDate);
 
@@ -117,10 +123,36 @@ namespace GitLabManager.Controllers.API
             }
             catch (Exception ex)
             {
-                return Json(new List<string>());
+                return Json(new ReturnResult() { flag = false,message = ex.Message});
             }
         }
 
+        private void SetGitFilesNormal(DirectoryInfo directory)
+        {
+            foreach (FileInfo fi in directory.GetFiles())
+            {
+                fi.IsReadOnly = false;
+            }
+
+            foreach (DirectoryInfo subdir in directory.GetDirectories())
+            {
+                SetGitFilesNormal(subdir);
+            }
+        }
+
+        private bool IsWareHouseExists(string name,string ns_id)
+        {
+            var pj = db.Projects.Where(i => i.namespace_id == ns_id && i.name == name).ToList();
+            if (pj.Count == 0)
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        }
+       
         private void SetQcdProject(WHCreateReq req,ReturnResult rr)
         {
             // 根据id检索出既存信息
@@ -169,7 +201,7 @@ namespace GitLabManager.Controllers.API
 
         private void InitProject(string web_url, WHCreateReq req)
         {
-            string tmpWork = AppDomain.CurrentDomain.BaseDirectory + "\\TempWork";
+            string tmpWork = AppDomain.CurrentDomain.BaseDirectory + "\\.TempData";
             string baseFolder = tmpWork + "\\" + Guid.NewGuid().ToString("N");
             string token = ConfigurationManager.AppSettings["gitlab_token1"];
 
@@ -177,7 +209,7 @@ namespace GitLabManager.Controllers.API
             {
                 // 1.创建工作目录
                 Directory.CreateDirectory(baseFolder);
-
+                Directory.Delete(baseFolder, true);
                 // 2. 从gitlab网站上取得项目代码，放入工作目录里面（workFolder）
                 var co = new CloneOptions()
                 {
@@ -209,13 +241,14 @@ namespace GitLabManager.Controllers.API
                     // 7.根据分支策略创建其他分支
                     PushOrtherBranch(token, baseFolder, req.branchType);
                 }
-
-                // 删除作业文件夹
-                try { Directory.Delete(baseFolder, true); } catch { };
             } 
-            catch(Exception ex)
+            catch{}
+            finally
             {
-                try { Directory.Delete(baseFolder, true); } catch { };
+                // 删除作业文件夹
+                DirectoryInfo dir = new DirectoryInfo(@baseFolder);
+                SetGitFilesNormal(dir);
+                Directory.Delete(@baseFolder, true);
             }
         }
 
