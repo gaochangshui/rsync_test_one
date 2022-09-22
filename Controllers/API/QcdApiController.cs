@@ -924,7 +924,6 @@ namespace GitLabManager.Controllers.API
             public string name { get; set; }
             public string description { get; set; }
             public string spacename { get; set ;}
-            public bool repo_flg  { get; set; } = true;
         }
 
         [HttpPost]

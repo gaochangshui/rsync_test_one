@@ -798,12 +798,11 @@ namespace GitLabManager.Controllers.API
         [HttpGet]
         public IHttpActionResult SendDingDingMsg()
         {
-            string parentFolder = System.AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
+            string parentFolder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
             string logFile = parentFolder + "\\send_dinging_log.txt";
-            StreamWriter sws = null;
 
             Directory.CreateDirectory(parentFolder);
-            sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
+            var sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
 
             try
             {
@@ -839,7 +838,7 @@ namespace GitLabManager.Controllers.API
                         + "\n代码审计和帮助请参考：http://docs.trechina.cn/docs/code_management/audit_rules";
 
                     // 发送通知
-                    client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
+                    //client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
 
                     // 发送成功日志
                     string logTxt ="通知日期：" + yday;
@@ -890,7 +889,7 @@ namespace GitLabManager.Controllers.API
                 var _users = db.Users.ToList();
 
                 // 项目信息取得（课题名）
-                var _agre = db_agora.Agreements.ToList();
+                var _agre = db_agora.Agreements.Where(i => i.repo_flg == true).ToList();
 
                 // 昨日没有登录代码的人员和项目号取得
                 string api = "http://172.17.1.60:8097/api/get_data.cgi?day=" + day;

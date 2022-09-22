@@ -160,7 +160,7 @@ namespace GitLabManager.Controllers.API
 
             if (_agre != null )
             {
-                List <Projects> pjList = new List <Projects>();
+                var pjList = new List <Projects>();
 
                 if (_agre.repository_ids != null)
                 {
@@ -182,12 +182,31 @@ namespace GitLabManager.Controllers.API
 
                 pjList.Add(newPj);
 
+                //无效的课题删除
+                var idList = new List <int>();
+                foreach(var pj in pjList)
+                {
+                    idList.Add(pj.id);
+                }
+
+                var result = from p in db.Projects where idList.Contains(p.id) select new { p.id };
+
+                var pjListNew = new List<Projects>();
+                foreach (var pj in pjList)
+                {
+                    var cnt = result.Where(i => i.id == pj.id).ToList().Count;
+                    if (cnt > 0)
+                    {
+                        pjListNew.Add(pj);
+                    }
+                }
+
                 //对象数据序列化
-                var repositoryIds = JsonConvert.SerializeObject(pjList);
+                var repositoryIds = JsonConvert.SerializeObject(pjListNew);
 
                 // 设定变更内容
                 _agre.repository_ids = repositoryIds;
-                _agre.project_count = _agre.project_count == null ? "1" : (Convert.ToInt32(_agre.project_count) + 1).ToString();
+                _agre.project_count = _agre.project_count == null ? "1" : (pjListNew.Count).ToString();
                 _agre.updated_by = req.user_id;
                 _agre.updated_at = DateTime.Now;
 
