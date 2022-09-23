@@ -9,6 +9,7 @@ using GitLabManager.Models;
 using GitLabManager.DataContext;
 using System.IO;
 using GitLabManager.Controllers.API;
+using System.Configuration;
 
 namespace GitLabManager.Controllers
 {
@@ -18,6 +19,9 @@ namespace GitLabManager.Controllers
 
         public static void Run()
         {
+            //true:生产环境，false:测试环境
+            string prodflg = ConfigurationManager.AppSettings["msg_send"];
+
             Timer timer = new Timer(60 * 1000); // 1分钟
             timer.AutoReset = true;
             timer.Enabled = true;
@@ -33,9 +37,11 @@ namespace GitLabManager.Controllers
                 if (dt.Hour == 10 && dt.Minute == 0) // 每天10点执行
                 {
                     var wac = new WarehouseApiController();
-                    wac.SendDingDingMsg();
+                    if (prodflg == "true")
+                    {
+                        wac.SendDingDingMsg();
+                    }
                 }
-
             };
         }
 
