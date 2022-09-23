@@ -115,6 +115,10 @@ namespace GitLabManager.Controllers.API
                     // 2.初期化仓库(readme，gitignore,创建默认分支)
                     InitProject(ret.http_url_to_repo, req);
                 }
+                else
+                {
+                    return Json(ret);
+                }
 
                 // 3.关联QCD项目
                 SetQcdProject(req,ret);
