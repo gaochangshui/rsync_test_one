@@ -486,7 +486,7 @@ namespace GitLabManager.Controllers.API
                 else
                 {
                     // 标星项目
-                    var all = db_agora.Agreements.ToList();
+                    // var all = db_agora.Agreements.ToList();
                     foreach (var s in starList)
                     {
                         var agreById = db_agora.Agreements.Where(i => i.agreement_cd == s.agreement_cd).FirstOrDefault();
