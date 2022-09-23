@@ -784,9 +784,17 @@ namespace GitLabManager.Controllers.API
                 Directory.Delete(@baseFolder, true); 
             }
             catch 
-            { 
-            };
+            {
+                SetGitFilesNormal(dir);
 
+                try
+                {
+                    Directory.Delete(@baseFolder, true);
+                }
+                catch
+                {
+                };
+            };
             return Json(new { Success = isSuccess, Message = messageInfo });
         }
         private void SetGitFilesNormal(DirectoryInfo directory)

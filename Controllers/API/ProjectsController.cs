@@ -271,7 +271,11 @@ namespace GitLabManager.Controllers.API
                 // 删除作业文件夹
                 DirectoryInfo dir = new DirectoryInfo(@baseFolder);
                 SetGitFilesNormal(dir);
-                Directory.Delete(@baseFolder, true);
+                try { Directory.Delete(@baseFolder, true); }catch
+                {
+                    SetGitFilesNormal(dir);
+                    try { Directory.Delete(@baseFolder, true); }catch { } 
+                }
             }
         }
 
