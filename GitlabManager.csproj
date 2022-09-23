@@ -204,6 +204,7 @@
     <Compile Include="Controllers\WarehouseController.cs" />
     <Compile Include="DataContext\AgoraDbContext.cs" />
     <Compile Include="DataContext\ApplicationDbContext.cs" />
+    <Compile Include="DataContext\DBCon.cs" />
     <Compile Include="Filters\CheckLoginFilter.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>

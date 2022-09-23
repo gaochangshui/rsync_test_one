@@ -23,8 +23,8 @@ namespace GitLabManager.Controllers.API
 {
     public class WarehouseApiController : ApiController
     {
-        public static ApplicationDbContext db = new ApplicationDbContext();
-        public static AgoraDbContext db_agora = new AgoraDbContext();
+        // public static ApplicationDbContext db = new ApplicationDbContext();
+        // public static AgoraDbContext db_agora = new AgoraDbContext();
         public static SmtpClientBLL smtp = new SmtpClientBLL();
 
         [HttpGet]
@@ -196,7 +196,7 @@ namespace GitLabManager.Controllers.API
                         "group by p.id,p.name, p.namespace_id,n.name " +
                         ") temp " +
                         "where temp.project_member like '%"+ user_cd + "%' or temp.group_member like '%"+ user_cd + "%' ";
-                list = db.Database.SqlQuery<Project>(sql).ToList();
+                list = DBCon.db.Database.SqlQuery<Project>(sql).ToList();
                 //int UserIdinGitlab = db.Users.Where(i => i.username.Equals(user_cd)).FirstOrDefault().id;
 
                 //HttpClient httpClient = new HttpClient();
@@ -245,7 +245,7 @@ namespace GitLabManager.Controllers.API
                         "group by p.id,p.name, p.namespace_id,n.name " +
                         ")temp " +
                         "where temp.name ilike '%template%' and group_name not like '%0%' ";
-                list = db.Database.SqlQuery<Project>(sql).ToList();
+                list = DBCon.db.Database.SqlQuery<Project>(sql).ToList();
 
                 //HttpClient httpClient = new HttpClient();
                 //httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
@@ -268,7 +268,7 @@ namespace GitLabManager.Controllers.API
         {
             try
             {
-                int UserIdinGitlab = db.Users.Where(i => i.username.Equals(user_cd)).FirstOrDefault().id;
+                int UserIdinGitlab = DBCon.db.Users.Where(i => i.username.Equals(user_cd)).FirstOrDefault().id;
 
                 HttpClient httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
@@ -368,27 +368,27 @@ namespace GitLabManager.Controllers.API
             }
             if (string.IsNullOrEmpty(pj_name) && string.IsNullOrEmpty(group_name))
             {
-                dataCnt = db.Database.SqlQuery<Warehouse>(sql + sqlEnd).Count();
+                dataCnt = DBCon.db.Database.SqlQuery<Warehouse>(sql + sqlEnd).Count();
                 //int ppp = db.Database.SqlQuery<Warehouse>(sql + sqlEnd).Count();
-                list = db.Database.SqlQuery<Warehouse>(sql + sqlEnd + sqlPage).ToList();
+                list = DBCon.db.Database.SqlQuery<Warehouse>(sql + sqlEnd + sqlPage).ToList();
             }
             else if (string.IsNullOrEmpty(pj_name) && !string.IsNullOrEmpty(group_name))
             {
                 msql = sql + " and  n.name ilike '%" + group_name + "%' ";
-                dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
-                list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
+                dataCnt = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
+                list = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
             else if (!string.IsNullOrEmpty(pj_name) && string.IsNullOrEmpty(group_name))
             {
                 msql = sql + " and  p.name ilike '%" + pj_name + "%' ";
-                dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
-                list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
+                dataCnt = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
+                list = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
             else
             {
                 msql = sql + " and (n.name ilike '%" + group_name + "%' or p.name ilike '%" + pj_name + "%' or p.description ilike '%"+ pj_name + "%') ";
-                dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
-                list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
+                dataCnt = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
+                list = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
             
             foreach (Warehouse li in list)
@@ -438,7 +438,7 @@ namespace GitLabManager.Controllers.API
         {
             string pj_id = HttpContext.Current.Request.QueryString["pj_id"];
             //AsNoTracking是DBQuery类的方法，只显示不更新，查询出来的对象是Detached状态
-            ProjectSyncSettings pjset = db_agora.ProjectSyncSettings.AsNoTracking().Where(i => i.project_id.ToString() == pj_id).FirstOrDefault();
+            ProjectSyncSettings pjset = DBCon.db_agora.ProjectSyncSettings.AsNoTracking().Where(i => i.project_id.ToString() == pj_id).FirstOrDefault();
             if (pjset != null)
             {
                 pjset.remote_token = "********";
@@ -469,11 +469,11 @@ namespace GitLabManager.Controllers.API
             }
             bool is_modified = req.is_modified == "true";
 
-            ProjectSyncSettings pjset = db_agora.ProjectSyncSettings.Where(i => i.project_id.ToString() == pj_id).FirstOrDefault();
+            ProjectSyncSettings pjset = DBCon.db_agora.ProjectSyncSettings.Where(i => i.project_id.ToString() == pj_id).FirstOrDefault();
             int dbstate = 0;
             
-                int maxid = db_agora.ProjectSyncSettings.Select(q => q.id).ToList().Count>0 ?
-                    db_agora.ProjectSyncSettings.Select(q => q.id).ToList().Max():0;
+                int maxid = DBCon.db_agora.ProjectSyncSettings.Select(q => q.id).ToList().Count>0 ?
+                    DBCon.db_agora.ProjectSyncSettings.Select(q => q.id).ToList().Max():0;
             RSABLL rSA = new RSABLL();
             if (pjset == null)
             {
@@ -488,7 +488,7 @@ namespace GitLabManager.Controllers.API
                 //DateTime默认值
                 _pjset.last_sync_at = new DateTime(1900, 01, 01, 08, 00, 00);
                 _pjset.last_successful_sync_at = new DateTime(1900, 01, 01, 08, 00, 00);
-                db_agora.ProjectSyncSettings.Add(_pjset);
+                DBCon.db_agora.ProjectSyncSettings.Add(_pjset);
             }
             else
             {
@@ -501,9 +501,9 @@ namespace GitLabManager.Controllers.API
                     pjset.remote_token = rSA.Encrypt(remote_token);
                 }
                 pjset.remote_user = remote_user;
-                db_agora.Entry(pjset).State = EntityState.Modified;
+                DBCon.db_agora.Entry(pjset).State = EntityState.Modified;
             }
-            dbstate = db_agora.SaveChanges();
+            dbstate = DBCon.db_agora.SaveChanges();
             
             return Json(new { Success = dbstate > 0, state = dbstate });
         }
@@ -525,7 +525,7 @@ namespace GitLabManager.Controllers.API
             string pj_id = HttpContext.Current.Request.QueryString["pj_id"];
             //string user_cd = HttpContext.Current.Request.Cookies["LoginedUser"].Value;
             string user_cd = HttpContext.Current.Request.QueryString["user_cd"];
-            User user = db.Users.Where(i => i.username.Equals(user_cd)).FirstOrDefault();
+            User user = DBCon.db.Users.Where(i => i.username.Equals(user_cd)).FirstOrDefault();
 
             DateTime dt = DateTime.Now.AddDays(1);
             string end_date = dt.ToString("yyyy-MM-dd");
@@ -587,7 +587,7 @@ namespace GitLabManager.Controllers.API
             string comment = HttpContext.Current.Request.QueryString["comment"];
             string qcd_project = HttpContext.Current.Request.QueryString["qcd_project"];
 
-            int codereviewer = db.Users.Where(i => i.username.Equals("codereviewer")).FirstOrDefault().id;
+            int codereviewer = DBCon.db.Users.Where(i => i.username.Equals("codereviewer")).FirstOrDefault().id;
 
             DateTime dt = DateTime.Parse(desire_date).AddDays(3);
             string end_date = dt.ToString("yyyy-MM-dd");
@@ -604,7 +604,7 @@ namespace GitLabManager.Controllers.API
             var result2 = response.Content.ReadAsStringAsync().Result;
 
             //发信
-            User user = db.Users.Where(i => i.username.Equals(user_cd)).FirstOrDefault();
+            User user = DBCon.db.Users.Where(i => i.username.Equals(user_cd)).FirstOrDefault();
             httpContent = new FormUrlEncodedContent(
             new List<KeyValuePair<string, string>> {
                         new KeyValuePair<string, string>("preferred_language", "zh_CN")
@@ -672,7 +672,7 @@ namespace GitLabManager.Controllers.API
                 };
                 string logMsg = Repository.Clone(projects.web_url, @baseFolder, co);
                 // 4.课题相关信息取得
-                ProjectSyncSettings projectInfo = db_agora.ProjectSyncSettings.Where(i => i.project_id.ToString() == projectID).FirstOrDefault();
+                ProjectSyncSettings projectInfo = DBCon.db_agora.ProjectSyncSettings.Where(i => i.project_id.ToString() == projectID).FirstOrDefault();
                 projectInfo.last_sync_at = DateTime.Now;
                 try
                 {
@@ -765,8 +765,8 @@ namespace GitLabManager.Controllers.API
                 }
                 finally
                 {
-                    db_agora.Entry(projectInfo).State = EntityState.Modified;
-                    db_agora.SaveChanges();    
+                    DBCon.db_agora.Entry(projectInfo).State = EntityState.Modified;
+                    DBCon.db_agora.SaveChanges();    
                 }
             }
             catch (Exception ex)
@@ -901,10 +901,10 @@ namespace GitLabManager.Controllers.API
             try
             {
                 // gitlab 用户信息取得（用户名）
-                var _users = db.Users.ToList();
+                var _users = DBCon.db.Users.ToList();
 
                 // 项目信息取得（课题名）
-                var _agre = db_agora.Agreements.Where(i => i.repo_flg == true).ToList();
+                var _agre = DBCon.db_agora.Agreements.Where(i => i.repo_flg == true).ToList();
 
                 // 昨日没有登录代码的人员和项目号取得
                 string api = "http://172.17.1.60:8097/api/get_data.cgi?day=" + day;
@@ -949,7 +949,7 @@ namespace GitLabManager.Controllers.API
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", token);
 
             // 没有设定有效日期的人员取得
-            var members = db.Members.Where(i => i.source_type == "Project" && i.expires_at == null).ToList();
+            var members = DBCon.db.Members.Where(i => i.source_type == "Project" && i.expires_at == null).ToList();
             if(members != null && members.Count > 0)
             {
                 foreach (var m in members)

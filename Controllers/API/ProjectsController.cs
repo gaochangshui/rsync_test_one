@@ -17,9 +17,9 @@ namespace GitLabManager.Controllers.API
 {
     public class ProjectsController : ApiController
     {
-        public static ApplicationDbContext db = new ApplicationDbContext();
+        // public static ApplicationDbContext db = new ApplicationDbContext();
 
-        public static AgoraDbContext db_agora = new AgoraDbContext();
+        // public static AgoraDbContext db_agora = new AgoraDbContext();
 
         [HttpGet]
         public IHttpActionResult GetLocationGroup()
@@ -27,7 +27,7 @@ namespace GitLabManager.Controllers.API
             try
             {
                 // 有效的所有群组
-                var allGroups = db.NameSpaces.Where(i => i.type == "Group" && i.id != 2 && i.id != 10 && i.id != 15).ToList();
+                var allGroups = DBCon.db.NameSpaces.Where(i => i.type == "Group" && i.id != 2 && i.id != 10 && i.id != 15).ToList();
 
                 // 顶级群组
                 var rootGroup = allGroups.Where(i => i.parent_id == null).ToList();
@@ -146,7 +146,7 @@ namespace GitLabManager.Controllers.API
 
         private bool IsWareHouseExists(string name,string ns_id)
         {
-            var pj = db.Projects.Where(i => i.namespace_id == ns_id && i.name == name).ToList();
+            var pj = DBCon.db.Projects.Where(i => i.namespace_id == ns_id && i.name == name).ToList();
             if (pj.Count == 0)
             {
                 return false;
@@ -160,7 +160,7 @@ namespace GitLabManager.Controllers.API
         private void SetQcdProject(WHCreateReq req,ReturnResult rr)
         {
             // 根据id检索出既存信息
-            var _agre = db_agora.Agreements.Where(i => i.agreement_cd == req.qcdId).FirstOrDefault();
+            var _agre = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == req.qcdId).FirstOrDefault();
 
             if (_agre != null )
             {
@@ -193,7 +193,7 @@ namespace GitLabManager.Controllers.API
                     idList.Add(pj.id);
                 }
 
-                var result = from p in db.Projects where idList.Contains(p.id) select new { p.id };
+                var result = from p in DBCon.db.Projects where idList.Contains(p.id) select new { p.id };
 
                 var pjListNew = new List<Projects>();
                 foreach (var pj in pjList)
@@ -215,10 +215,10 @@ namespace GitLabManager.Controllers.API
                 _agre.updated_at = DateTime.Now;
 
                 // 标记数据更新状态
-                db_agora.Entry(_agre).State = EntityState.Modified;
+                DBCon.db_agora.Entry(_agre).State = EntityState.Modified;
 
                 // 保存数据变更
-                int dbstate = db_agora.SaveChanges();
+                int dbstate = DBCon.db_agora.SaveChanges();
             }
         }
 
@@ -395,7 +395,7 @@ namespace GitLabManager.Controllers.API
                 
                 // 2. 添加成员，设定权限和使用期限
                 errMsg = "仓库创建成功，添加成员，设定有效期限失败;";
-                User user = db.Users.Where(i => i.username.Equals(user_id)).FirstOrDefault();
+                User user = DBCon.db.Users.Where(i => i.username.Equals(user_id)).FirstOrDefault();
                 httpContent = new FormUrlEncodedContent(new List<KeyValuePair<string, string>> {
                         new KeyValuePair<string, string>("user_id", user.id.ToString()),
                         new KeyValuePair<string, string>("expires_at", expDate),

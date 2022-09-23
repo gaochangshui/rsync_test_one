@@ -18,8 +18,8 @@ namespace GitLabManager.Controllers.API
 {
     public class QcdApiController : ApiController
     {
-        public static ApplicationDbContext db = new ApplicationDbContext();
-        public static AgoraDbContext db_agora = new AgoraDbContext();
+        //public static ApplicationDbContext db = new ApplicationDbContext();
+        //public static AgoraDbContext db_agora = new AgoraDbContext();
         public static SmtpClientBLL smtp = new SmtpClientBLL();
 
         private List<Project> ProjectsByID(string id)
@@ -52,7 +52,7 @@ namespace GitLabManager.Controllers.API
                         "group by p.id,p.name, p.namespace_id,n.name " +
                         ") temp " +
                         "where temp.id in (" + id + ") ";
-                list = db.Database.SqlQuery<Project>(sql).ToList();
+                list = DBCon.db.Database.SqlQuery<Project>(sql).ToList();
                 return list;
             }
             catch (Exception ex)
@@ -141,27 +141,27 @@ namespace GitLabManager.Controllers.API
             }
             if (string.IsNullOrEmpty(pj_name) && string.IsNullOrEmpty(group_name))
             {
-                dataCnt = db.Database.SqlQuery<Warehouse>(sql + sqlEnd).Count();
+                dataCnt = DBCon.db.Database.SqlQuery<Warehouse>(sql + sqlEnd).Count();
                 //int ppp = db.Database.SqlQuery<Warehouse>(sql + sqlEnd).Count();
-                list = db.Database.SqlQuery<Warehouse>(sql + sqlEnd + sqlPage).ToList();
+                list = DBCon.db.Database.SqlQuery<Warehouse>(sql + sqlEnd + sqlPage).ToList();
             }
             else if (string.IsNullOrEmpty(pj_name) && !string.IsNullOrEmpty(group_name))
             {
                 msql = sql + " and  n.name ilike '%" + group_name + "%' ";
-                dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
-                list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
+                dataCnt = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
+                list = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
             else if (!string.IsNullOrEmpty(pj_name) && string.IsNullOrEmpty(group_name))
             {
                 msql = sql + " and  p.name ilike '%" + pj_name + "%' ";
-                dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
-                list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
+                dataCnt = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
+                list = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
             else
             {
                 msql = sql + " and  n.name ilike '%" + group_name + "%' or p.name ilike '%" + pj_name + "%' ";
-                dataCnt = db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
-                list = db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
+                dataCnt = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd).Count();
+                list = DBCon.db.Database.SqlQuery<Warehouse>(msql + sqlEnd + sqlPage).ToList();
             }
 
             foreach (Warehouse li in list)
@@ -280,7 +280,7 @@ namespace GitLabManager.Controllers.API
                 var pjList = JsonConvert.DeserializeObject<AgreementInfo>(result);
 
                 //数据库中的数据取得
-                List<Agreements> agreList = db_agora.Agreements.ToList();
+                List<Agreements> agreList = DBCon.db_agora.Agreements.ToList();
                 var userUrl = GetMemberUrl();
                 int dbstate = 0;
 
@@ -321,7 +321,7 @@ namespace GitLabManager.Controllers.API
                             _agre.manager_name = pjList.projectInfos[i].LeaderName;
                             _agre.member_ids = JsonConvert.SerializeObject(member);
 
-                            db_agora.Agreements.Add(_agre);
+                            DBCon.db_agora.Agreements.Add(_agre);
                         }
                         else
                         {
@@ -380,7 +380,7 @@ namespace GitLabManager.Controllers.API
 
                             if (updateStatus != 0)
                             {
-                                db_agora.Entry(_agre).State = EntityState.Modified;
+                                DBCon.db_agora.Entry(_agre).State = EntityState.Modified;
                             }
                         }
                     }
@@ -391,10 +391,10 @@ namespace GitLabManager.Controllers.API
                         var hasItem = existList.Where(i => i.agreement_cd == a.agreement_cd).ToList();
                         if (hasItem == null || hasItem.Count == 0)
                         {
-                            db_agora.Entry(a).State = EntityState.Deleted;
+                            DBCon.db_agora.Entry(a).State = EntityState.Deleted;
                         }
                     }
-                    dbstate = db_agora.SaveChanges();
+                    dbstate = DBCon.db_agora.SaveChanges();
                 }
 
                 return Json(new { Success = dbstate > 0, state = dbstate, Msg = "数据库更新成功" });
@@ -450,7 +450,7 @@ namespace GitLabManager.Controllers.API
                 }
 
                 // 标星项目检索
-                var starList = db_agora.UsersStarAgreements.Where(i => i.user_id == userId).ToList();
+                var starList = DBCon.db_agora.UsersStarAgreements.Where(i => i.user_id == userId).ToList();
 
                 var agreList = new List<Agreements>();
 
@@ -458,22 +458,22 @@ namespace GitLabManager.Controllers.API
                 if (type == "0")
                 {
                     // 所有项目
-                    agreList = db_agora.Agreements.ToList();
+                    agreList = DBCon.db_agora.Agreements.ToList();
                 }
                 else if (type == "1")
                 {
                     // 进行中的项目
-                    agreList = db_agora.Agreements.Where(i => i.status == 1 || i.status == 2 || i.status == 3).ToList();
+                    agreList = DBCon.db_agora.Agreements.Where(i => i.status == 1 || i.status == 2 || i.status == 3).ToList();
                 }
                 else if (type == "2")
                 {
                     //结束和终止的项目
-                    agreList = db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList();
+                    agreList = DBCon.db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList();
                 }
                 else if (type == "3")
                 {
                     // 我参与的
-                    var all = db_agora.Agreements.ToList();
+                    var all = DBCon.db_agora.Agreements.ToList();
                     foreach (var a in all)
                     {
                         if ((a.status == 1 || a.status == 2 || a.status == 3)
@@ -489,7 +489,7 @@ namespace GitLabManager.Controllers.API
                     // var all = db_agora.Agreements.ToList();
                     foreach (var s in starList)
                     {
-                        var agreById = db_agora.Agreements.Where(i => i.agreement_cd == s.agreement_cd).FirstOrDefault();
+                        var agreById = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == s.agreement_cd).FirstOrDefault();
                         if (agreById != null)
                         {
                             agreList.Add(agreById);
@@ -548,14 +548,14 @@ namespace GitLabManager.Controllers.API
 
                 List<Agreements> agreList = new List<Agreements>();
                 //全部的课题数量
-                var all = db_agora.Agreements.ToList();
+                var all = DBCon.db_agora.Agreements.ToList();
                 int allCount = all.Count;
 
                 //进行中的课题数量
-                int doingCount = db_agora.Agreements.Where(i => i.status == 1 || i.status == 2 || i.status == 3).ToList().Count;
+                int doingCount = DBCon.db_agora.Agreements.Where(i => i.status == 1 || i.status == 2 || i.status == 3).ToList().Count;
 
                 //结束和终止的课题数量
-                int endCount = db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList().Count;
+                int endCount = DBCon.db_agora.Agreements.Where(i => i.status == 4 || i.status == 5).ToList().Count;
 
                 // 我参与的
                 foreach (var a in all)
@@ -570,7 +570,7 @@ namespace GitLabManager.Controllers.API
 
                 //标星项目
                 var starCount = 0;
-                var starList = db_agora.UsersStarAgreements.Where(i => i.user_id == userId).ToList();
+                var starList = DBCon.db_agora.UsersStarAgreements.Where(i => i.user_id == userId).ToList();
 
                 foreach (var s in starList)
                 {
@@ -600,7 +600,7 @@ namespace GitLabManager.Controllers.API
                 // 项目名称
                 string name = HttpContext.Current.Request.QueryString["name"];
 
-                List<Projects> pjInfo = db.Projects.ToList();
+                List<Projects> pjInfo = DBCon.db.Projects.ToList();
 
                 if (name != null && name != String.Empty)
                 {
@@ -609,7 +609,7 @@ namespace GitLabManager.Controllers.API
                 }
 
                 // 课题的命名空间取得
-                var  nameSpaces = db.NameSpaces.ToList();
+                var  nameSpaces = DBCon.db.NameSpaces.ToList();
                 var  retList = new List<ReturnProjectView>();
 
                 foreach (var p in pjInfo)
@@ -639,7 +639,7 @@ namespace GitLabManager.Controllers.API
             try
             {
                 // 根据id检索出既存信息
-                Agreements _agre = db_agora.Agreements.Where(i => i.agreement_cd == req.id).FirstOrDefault();
+                Agreements _agre = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == req.id).FirstOrDefault();
 
                 //对象数据序列化
                 string repositoryIds = JsonConvert.SerializeObject(req.gitlabProject);
@@ -651,10 +651,10 @@ namespace GitLabManager.Controllers.API
                 _agre.updated_at = DateTime.Now;
 
                 // 标记数据更新状态
-                db_agora.Entry(_agre).State = EntityState.Modified;
+                DBCon.db_agora.Entry(_agre).State = EntityState.Modified;
 
                 // 保存数据变更
-                int dbstate = db_agora.SaveChanges();
+                int dbstate = DBCon.db_agora.SaveChanges();
 
                 return Json(new { Success = dbstate > 0, state = dbstate });
             }
@@ -670,15 +670,15 @@ namespace GitLabManager.Controllers.API
             try
             {
                 // 根据id检索出既存信息
-                var _star = db_agora.UsersStarAgreements.Where(i => i.user_id == req.userId && i.agreement_cd == req.agreement_cd).FirstOrDefault();
+                var _star = DBCon.db_agora.UsersStarAgreements.Where(i => i.user_id == req.userId && i.agreement_cd == req.agreement_cd).FirstOrDefault();
 
                 if (req.flag == false && _star != null) // 取消标星
                 {
-                    db_agora.Entry(_star).State = EntityState.Deleted;
+                    DBCon.db_agora.Entry(_star).State = EntityState.Deleted;
                 }
                 else if (_star == null && req.flag == true)
                 {
-                    var _all = db_agora.UsersStarAgreements.ToList();
+                    var _all = DBCon.db_agora.UsersStarAgreements.ToList();
                     int maxId = _all.Count > 0 ? _all.Max(i => i.id) : 0;
 
                     _star = new UsersStarAgreements();
@@ -687,11 +687,11 @@ namespace GitLabManager.Controllers.API
                     _star.agreement_cd = req.agreement_cd;
                     _star.created_at = DateTime.Now;
                     _star.updated_at = DateTime.Now;
-                    db_agora.Entry(_star).State = EntityState.Added;
+                    DBCon.db_agora.Entry(_star).State = EntityState.Added;
                 }
 
                 // 保存数据变更
-                int dbstate = db_agora.SaveChanges();
+                int dbstate = DBCon.db_agora.SaveChanges();
                 return Json(new { Success = dbstate > 0, state = dbstate });
             }
             catch
@@ -710,7 +710,7 @@ namespace GitLabManager.Controllers.API
                 string id = HttpContext.Current.Request.QueryString["id"];
 
                 // 根据id检索出既存信息
-                Agreements _agre = db_agora.Agreements.Where(i => i.agreement_cd == id).FirstOrDefault();
+                Agreements _agre = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == id).FirstOrDefault();
 
                 if (_agre != null && _agre.repository_ids != null)
                 {
@@ -720,8 +720,8 @@ namespace GitLabManager.Controllers.API
 
                     foreach (var p in pjList)
                     {
-                        Projects pj = db.Projects.Where(i => i.id == p.id).FirstOrDefault();
-                        string spaceName = db.NameSpaces.Where(i => i.id.ToString() == pj.namespace_id).First().name;
+                        Projects pj = DBCon.db.Projects.Where(i => i.id == p.id).FirstOrDefault();
+                        string spaceName = DBCon.db.NameSpaces.Where(i => i.id.ToString() == pj.namespace_id).First().name;
                         var pv = new ReturnProjectView
                         {
                             id = p.id,
@@ -769,7 +769,7 @@ namespace GitLabManager.Controllers.API
                 string pageNum = HttpContext.Current.Request.QueryString["pageNum"];
 
                 // 根据id检索出既存信息
-                Agreements _agre = db_agora.Agreements.Where(i => i.agreement_cd == id).FirstOrDefault();
+                Agreements _agre = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == id).FirstOrDefault();
 
                 if (_agre != null && _agre.repository_ids != null)
                 {
@@ -815,7 +815,7 @@ namespace GitLabManager.Controllers.API
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
 
-            int codereviewer = db.Users.Where(i => i.username.Equals("codereviewer")).FirstOrDefault().id;  // 审查成员id
+            int codereviewer = DBCon.db.Users.Where(i => i.username.Equals("codereviewer")).FirstOrDefault().id;  // 审查成员id
             string end_date = DateTime.Parse(req.expecteDate).AddDays(3).ToString("yyyy-MM-dd");            // 最晚完成日期（比预定日期晚三天）
 
             // 权限设定
@@ -839,15 +839,15 @@ namespace GitLabManager.Controllers.API
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
 
             StringBuilder sb = new StringBuilder();
-            User user = db.Users.Where(i => i.username.Equals(req.userId)).FirstOrDefault();
+            User user = DBCon.db.Users.Where(i => i.username.Equals(req.userId)).FirstOrDefault();
 
             // 项目成员邮件取得(CC人员)
             string memberEmails = "";
-            var agreList = db_agora.Agreements.Where(i => i.agreement_cd == req.id).FirstOrDefault();
+            var agreList = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == req.id).FirstOrDefault();
             var memlist = JsonConvert.DeserializeObject<List<MemberInfo>>(agreList.member_ids);
             foreach (var mem in memlist)
             {
-                var u = db.Users.Where(i => i.username.Equals(mem.MemberID)).FirstOrDefault();
+                var u = DBCon.db.Users.Where(i => i.username.Equals(mem.MemberID)).FirstOrDefault();
                 if (u != null && u.email !=null && u.email != "")
                 {
                     memberEmails = memberEmails + u.email + ",";
@@ -931,17 +931,17 @@ namespace GitLabManager.Controllers.API
         {
             try
             {
-                var _agre = db_agora.Agreements.Where(i => i.agreement_cd == req.agreement_cd).FirstOrDefault();
+                var _agre = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == req.agreement_cd).FirstOrDefault();
 
                 _agre.repo_flg = req.is_use;
                 _agre.updated_by = req.user_id;
                 _agre.updated_at = DateTime.Now;
 
                 // 标记数据更新状态
-                db_agora.Entry(_agre).State = EntityState.Modified;
+                DBCon.db_agora.Entry(_agre).State = EntityState.Modified;
 
                 // 保存数据变更
-                int dbstate = db_agora.SaveChanges();
+                int dbstate = DBCon.db_agora.SaveChanges();
                 return Json(new {success = true});
             }
             catch
