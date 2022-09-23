@@ -111,6 +111,18 @@ namespace GitLabManager.Models
         public string parent_id { get; set; }
     }
 
+    [Table("members", Schema = "public")]
+    public class Members
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+        public int id { get; set; }
+        public int access_level { get; set; }
+        public int source_id { get; set; }
+        public string source_type { get; set; }
+        public string user_id { get; set; }
+        public string expires_at { get; set; }
+    }
+
     public class QCDCodeReviewReq
     {
         public string id { get; set; }

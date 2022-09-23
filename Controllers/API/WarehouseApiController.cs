@@ -778,7 +778,14 @@ namespace GitLabManager.Controllers.API
             // 删除作业文件夹
             DirectoryInfo dir = new DirectoryInfo(@baseFolder);
             SetGitFilesNormal(dir);
-            Directory.Delete(@baseFolder, true);
+
+            try 
+            { 
+                Directory.Delete(@baseFolder, true); 
+            }
+            catch 
+            { 
+            };
 
             return Json(new { Success = isSuccess, Message = messageInfo });
         }
@@ -923,6 +930,43 @@ namespace GitLabManager.Controllers.API
             }
         }
 
+        [HttpGet]
+        public IHttpActionResult SetExpiresDate()
+        {
+            var expDate = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
+
+            string token = ConfigurationManager.AppSettings["gitlab_token1"];
+            string api = ConfigurationManager.AppSettings["gitlab_instance"] + "projects";
+            HttpClient httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", token);
+
+            // 没有设定有效日期的人员取得
+            var members = db.Members.Where(i => i.source_type == "Project" && i.expires_at == null).ToList();
+            if(members != null && members.Count > 0)
+            {
+                foreach (var m in members)
+                {
+                    Thread.Sleep(500);
+                    var response = httpClient.GetAsync(api + "/" + m.source_id).Result;
+                    var result = response.Content.ReadAsStringAsync().Result;
+                    var project = JsonConvert.DeserializeObject<projectWithNameSpace>(result);
+
+                    if (project != null && project.name_with_namespace.StartsWith("public-playground") == false)
+                    {
+                        var httpContent = new FormUrlEncodedContent(new List<KeyValuePair<string, string>> {
+                            new KeyValuePair<string, string>("user_id", m.user_id),
+                            new KeyValuePair<string, string>("expires_at", expDate),
+                            new KeyValuePair<string, string>("access_level", m.access_level.ToString())
+                        });
+                        var mapi = api + "/" + m.source_id + "/members";
+                        response = httpClient.PutAsync(mapi, httpContent).Result;
+                        result = response.Content.ReadAsStringAsync().Result;
+                    }
+                }
+            }
+
+            return Ok();
+        }
         private class UserDingDing
         {
             public string UserCD { get; set; }
@@ -938,6 +982,13 @@ namespace GitLabManager.Controllers.API
             public string PJCD { get; set; }
             public string PJName { get; set; }
             public string EmployeeName { get; set; }
+        }
+
+        private class projectWithNameSpace
+        {
+            public int id { get; set; }
+            public string name { get; set; }
+            public string name_with_namespace { get; set; }
         }
     }
 }
