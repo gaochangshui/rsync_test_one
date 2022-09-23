@@ -55,7 +55,7 @@ namespace GitLabManager.Controllers.API
                 list = DBCon.db.Database.SqlQuery<Project>(sql).ToList();
                 return list;
             }
-            catch (Exception ex)
+            catch
             {
                 return new List<Project>();
             }
@@ -583,7 +583,7 @@ namespace GitLabManager.Controllers.API
 
                 return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount, myCount = myCount , starCount  = starCount });
             }
-            catch(Exception ex)
+            catch
             {
                 return null;
             }

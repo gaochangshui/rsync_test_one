@@ -211,7 +211,7 @@ namespace GitLabManager.Controllers.API
                 //List<Project> v = JsonConvert.DeserializeObject<List<Project>>(result);
                 return list;
             }
-            catch (Exception ex)
+            catch
             {
                 return new List<Project>();
             }
@@ -259,7 +259,7 @@ namespace GitLabManager.Controllers.API
                 //List<Project> v = JsonConvert.DeserializeObject<List<Project>>(result);
                 return list;
             }
-            catch (Exception ex)
+            catch
             {
                 return new List<Project>();
             }
@@ -282,7 +282,7 @@ namespace GitLabManager.Controllers.API
                 List<Project> v = JsonConvert.DeserializeObject<List<Project>>(result);
                 return v;
             }
-            catch (Exception ex)
+            catch
             {
                 return new List<Project>();
             }
@@ -932,7 +932,7 @@ namespace GitLabManager.Controllers.API
                 // 结果返回
                 return list;
             }
-            catch (Exception ex)
+            catch
             {
                 return new List<NoCodeUserMode>();
             }

@@ -86,7 +86,7 @@ namespace GetUserAvatar.Controllers
                     return false;
                 }
             }
-            catch (Exception ex)
+            catch
             {
                 return false;
             }

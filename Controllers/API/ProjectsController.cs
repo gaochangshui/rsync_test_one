@@ -60,7 +60,7 @@ namespace GitLabManager.Controllers.API
 
                 return Json(new { location = nameSpaces, group = resultJson });
             }
-            catch (Exception ex)
+            catch
             {
                 return Json(new NameSpaces { });
             }
@@ -87,7 +87,7 @@ namespace GitLabManager.Controllers.API
 
                 return Json(ignoreList);
             }
-            catch (Exception ex)
+            catch
             {
                 return Json(new List<string>());
             }
@@ -310,7 +310,7 @@ namespace GitLabManager.Controllers.API
                     return true;
                 }
             }
-            catch(Exception ex)
+            catch
             {
                 return false;
             }
@@ -361,7 +361,7 @@ namespace GitLabManager.Controllers.API
                     return true;
                 }
             }
-            catch (Exception ex)
+            catch
             {
                 return false;
             }
@@ -408,7 +408,7 @@ namespace GitLabManager.Controllers.API
                 rr.flag = true;
                 return rr;
             }
-            catch (Exception ex)
+            catch
             {
                 rr.message = errMsg + result;
                 rr.flag = false;

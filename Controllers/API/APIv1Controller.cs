@@ -194,7 +194,7 @@ namespace GitLabManager.Controllers
                 {
                     usercd = int.Parse(item.username);
                 }
-                catch (Exception ex)
+                catch
                 {
                     continue;
                 }
@@ -232,7 +232,7 @@ namespace GitLabManager.Controllers
                             var response = httpClient.PutAsync(ConfigurationManager.AppSettings["gitlab_instance"] + "users/" + item.id.ToString(), form).Result;
                         }
                     }
-                    catch (Exception ex)
+                    catch
                     {
                         continue;
                     }
