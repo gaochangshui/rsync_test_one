@@ -40,7 +40,7 @@ namespace GitLabManager.BLL
                 client.Send(message);
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
                 return false;
             }

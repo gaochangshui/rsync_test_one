@@ -43,6 +43,13 @@ namespace GitLabManager.Models
         public string manager_id { get; set; }
         public string manager_name { get; set; }
         public string project_count { get; set; }
+        public bool repo_flg { get; set; } = true;
+    }
+    public class IsUseGitlabReq
+    {
+        public string agreement_cd { get; set; }
+        public string user_id { get; set; }
+        public bool is_use { get; set; } = true;
     }
 
     public class AgreementsWithStar
@@ -102,6 +109,18 @@ namespace GitLabManager.Models
         public string name { get; set; }
         public string type { get; set; }
         public string parent_id { get; set; }
+    }
+
+    [Table("members", Schema = "public")]
+    public class Members
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+        public int id { get; set; }
+        public int access_level { get; set; }
+        public int source_id { get; set; }
+        public string source_type { get; set; }
+        public string user_id { get; set; }
+        public string expires_at { get; set; }
     }
 
     public class QCDCodeReviewReq
