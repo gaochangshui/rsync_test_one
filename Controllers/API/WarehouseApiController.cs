@@ -941,6 +941,11 @@ namespace GitLabManager.Controllers.API
         [HttpGet]
         public IHttpActionResult SetExpiresDate()
         {
+            string parentFolder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
+            string logFile = parentFolder + "\\expires_data_log.txt";
+
+            Directory.CreateDirectory(parentFolder);
+            var sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
             var expDate = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
 
             string token = ConfigurationManager.AppSettings["gitlab_token1"];
@@ -948,29 +953,60 @@ namespace GitLabManager.Controllers.API
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", token);
 
-            // 没有设定有效日期的人员取得
-            var members = DBCon.db.Members.Where(i => i.source_type == "Project" && i.expires_at == null).ToList();
-            if(members != null && members.Count > 0)
+            try
             {
-                foreach (var m in members)
+                // 没有设定有效日期的人员取得
+                var members = DBCon.db.Members.Where(i => i.source_type == "Project" && i.expires_at == null).ToList();
+                var user = DBCon.db.Users.Where(i => i.admin == true).ToList();
+                if (members != null)
                 {
-                    Thread.Sleep(500);
-                    var response = httpClient.GetAsync(api + "/" + m.source_id).Result;
-                    var result = response.Content.ReadAsStringAsync().Result;
-                    var project = JsonConvert.DeserializeObject<projectWithNameSpace>(result);
-
-                    if (project != null && project.name_with_namespace.StartsWith("public-playground") == false)
+                    foreach (var m in members)
                     {
-                        var httpContent = new FormUrlEncodedContent(new List<KeyValuePair<string, string>> {
-                            new KeyValuePair<string, string>("user_id", m.user_id),
-                            new KeyValuePair<string, string>("expires_at", expDate),
-                            new KeyValuePair<string, string>("access_level", m.access_level.ToString())
-                        });
-                        var mapi = api + "/" + m.source_id + "/members";
-                        response = httpClient.PutAsync(mapi, httpContent).Result;
-                        result = response.Content.ReadAsStringAsync().Result;
+                        var admin = user.Where(i => i.id.ToString() == m.user_id).ToList();
+                        if (admin != null && admin.Count > 0)
+                        {
+                            continue;
+                        }
+
+                        var response = httpClient.GetAsync(api + "/" + m.source_id).Result;
+                        var result = response.Content.ReadAsStringAsync().Result;
+                        var project = JsonConvert.DeserializeObject<projectWithNameSpace>(result);
+
+                        if (project != null && project.name_with_namespace.StartsWith("public-playground") == false)
+                        {
+                            HttpContent httpContent = new FormUrlEncodedContent(
+                                new List<KeyValuePair<string, string>>
+                                {
+                                    new KeyValuePair<string, string>("access_level", m.access_level.ToString()),
+                                    new KeyValuePair<string, string>("expires_at", expDate)
+                                }
+                             );
+
+                            var url = api + "/" + m.source_id + "/members/" + m.user_id;
+                            response = httpClient.PutAsync(url, httpContent).Result;
+                            result = response.Content.ReadAsStringAsync().Result;
+                            var msg = JsonConvert.DeserializeObject<ErrorMsg>(result);
+                            if (msg.message != null)
+                            {
+                                sws.WriteLine("做成日期：" + DateTime.Today.ToShortDateString() + "; " + msg.message.ToString() + "; url: " + url);
+                            }
+                            else
+                            {
+                                sws.WriteLine("做成日期：" + DateTime.Today.ToShortDateString() + "; 设定成功，有效日期：" + expDate + "; url: " + url);
+                            }
+
+                            Thread.Sleep(500);
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                sws.WriteLine("错误日期：" + DateTime.Today.ToShortDateString() + ex.Message);
+            }
+            finally
+            {
+                 sws.Close();
             }
 
             return Ok();
@@ -997,6 +1033,11 @@ namespace GitLabManager.Controllers.API
             public int id { get; set; }
             public string name { get; set; }
             public string name_with_namespace { get; set; }
+        }
+
+        private class ErrorMsg
+        {
+            public object message { get; set; }
         }
     }
 }

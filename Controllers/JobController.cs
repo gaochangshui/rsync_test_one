@@ -30,7 +30,10 @@ namespace GitLabManager.Controllers
                 DateTime dt = DateTime.Now;
                 if (dt.Minute % 20 == 0) //每20分钟 同期一次
                 {
-                    QCDProjectSync();
+                    if (prodflg == "true")
+                    {
+                        QCDProjectSync();
+                    }
                 }
 
                 // 昨日代码未推送人员钉钉通知
@@ -40,6 +43,16 @@ namespace GitLabManager.Controllers
                     if (prodflg == "true")
                     {
                         wac.SendDingDingMsg();
+                    }
+                }
+
+                // 仓库成员未设定有效期限对应
+                if (dt.Hour == 18 && dt.Minute == 0) // 每天18点执行
+                {
+                    var wac = new WarehouseApiController();
+                    if (prodflg == "true")
+                    {
+                        wac.SetExpiresDate();
                     }
                 }
             };

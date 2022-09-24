@@ -18,6 +18,7 @@ namespace GitlabManager.Models
         public string avatar { get; set; }
         public string preferred_language { get; set; }
         public bool external { get; set; }
+        public bool admin { get; set; }
     }
     public class LoginModel
     {
