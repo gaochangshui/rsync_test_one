@@ -810,8 +810,7 @@ namespace GitLabManager.Controllers.API
             }
         }
 
-        [HttpGet]
-        public IHttpActionResult SendDingDingMsg()
+        public static void SendDingDingMsg()
         {
             string parentFolder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
             string logFile = parentFolder + "\\send_dinging_log.txt";
@@ -831,7 +830,7 @@ namespace GitLabManager.Controllers.API
                     // 没有数据日志
                     string logTxt = "没有获取到" + yday + "日的数据！";
                     sws.WriteLine(logTxt);
-                    return Json(new { success = true, message = "no data!" });
+                    return ;
                 }
 
                 // 钉钉代理ID取得
@@ -865,11 +864,11 @@ namespace GitLabManager.Controllers.API
                     sws.WriteLine(logTxt);
                 }
 
-                return Json(new { success = true ,message = ""});
+                return ;
             } 
-            catch (Exception ex)
+            catch
             {
-                return Json(new { success = true, message = ex.Message});
+                return ;
             }
             finally
             {
@@ -877,7 +876,7 @@ namespace GitLabManager.Controllers.API
             }
         }
 
-        private  string GetDingDingId(String cd, HttpClient httpClient)
+        private  static string GetDingDingId(String cd, HttpClient httpClient)
         {
             Thread.Sleep(500);
             var responseforback = httpClient.GetAsync("https://trechina.cn/APIv1/UsersDing?usercd=" + cd).Result.Content.ReadAsStringAsync().Result;
@@ -896,7 +895,7 @@ namespace GitLabManager.Controllers.API
             return "";
         }
 
-        private List<NoCodeUserMode> NoUploadCodeUsers(string day)
+        private static List<NoCodeUserMode> NoUploadCodeUsers(string day)
         {
             try
             {
@@ -938,8 +937,7 @@ namespace GitLabManager.Controllers.API
             }
         }
 
-        [HttpGet]
-        public IHttpActionResult SetExpiresDate()
+        public static void SetExpiresDate()
         {
             string parentFolder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
             string logFile = parentFolder + "\\expires_data_log.txt";
@@ -1009,7 +1007,7 @@ namespace GitLabManager.Controllers.API
                  sws.Close();
             }
 
-            return Ok();
+            return ;
         }
         private class UserDingDing
         {

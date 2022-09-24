@@ -1,5 +1,6 @@
 ﻿using GetUserAvatar.Models;
-using GitlabManager.DataContext;
+using GitLabManager.DataContext;
+using System.IO;
 using GitlabManager.Models;
 using GitLabManager.Models;
 using Newtonsoft.Json;
@@ -10,7 +11,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Web;
 using System.Web.Http;
-using GitLabManager.DataContext;
 using GitLabManager.BLL;
 using System.Configuration;
 using System.Text;
@@ -266,14 +266,22 @@ namespace GitLabManager.Controllers.API
             public string username { get; set; }
             public string avatar_url { get; set; }
         }
-        [HttpGet]
-        public IHttpActionResult QCDProjectSync()
+
+        public  static void QCDProjectSync()
         {
+            string parentFolder = System.AppDomain.CurrentDomain.BaseDirectory
+                    + "\\LOG";
+            string logFile = parentFolder + "\\run_log.txt";
+            StreamWriter sws = null;
+
             try
             {
+                Directory.CreateDirectory(parentFolder);
+                sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
+
                 HttpClient httpClient = new HttpClient();
                 var syncList = httpClient.GetAsync("http://qcd.trechina.cn/qcdapi/Agreements").Result;
-                //var syncList = httpClient.GetAsync("http://172.17.100.15:8090/api/Agreements").Result;
+
                 var result = syncList.Content.ReadAsStringAsync().Result;
 
                 //API的项目信息取得
@@ -281,10 +289,12 @@ namespace GitLabManager.Controllers.API
 
                 //数据库中的数据取得
                 List<Agreements> agreList = DBCon.db_agora.Agreements.ToList();
-                var userUrl = GetMemberUrl();
-                int dbstate = 0;
 
-                var  existList = new List<Agreements>();
+                QcdApiController qcdApi = new QcdApiController();
+                var userUrl = qcdApi.GetMemberUrl();
+
+                int dbstate = 0;
+                var existList = new List<Agreements>();
 
                 if (agreList != null)
                 {
@@ -305,8 +315,7 @@ namespace GitLabManager.Controllers.API
                         }
 
                         var member = pjList.memberInfos.Where(m => m.ProjectCD == pjList.projectInfos[i].ProjectCD).ToList();
-                        member = MemberConvert(member, userUrl);
-
+                        member = qcdApi.MemberConvert(member, userUrl);
                         _agre.updated_at = DateTime.Now;
 
                         if (updateStatus == 1)
@@ -327,6 +336,7 @@ namespace GitLabManager.Controllers.API
                         {
                             //保存同期前存在的项目
                             existList.Add(_agre);
+
                             if (_agre.agreement_name != pjList.projectInfos[i].ProjectName)
                             {
                                 _agre.agreement_name = pjList.projectInfos[i].ProjectName;
@@ -375,8 +385,8 @@ namespace GitLabManager.Controllers.API
                                 updateStatus = 9; // 数据变更
                             }
 
-                            //仓库数量计算
-                            _agre.project_count = GetWareHouseCount(_agre.repository_ids);
+                            // 仓库数量计算
+                            _agre.project_count = qcdApi.GetWareHouseCount(_agre.repository_ids);
 
                             if (updateStatus != 0)
                             {
@@ -388,20 +398,26 @@ namespace GitLabManager.Controllers.API
                     // 删除项目
                     foreach (var a in agreList)
                     {
-                        var hasItem = existList.Where(i => i.agreement_cd == a.agreement_cd).ToList();
-                        if (hasItem == null || hasItem.Count == 0)
+                        var delItem = existList.Where(i => i.agreement_cd == a.agreement_cd).ToList();
+                        if (delItem == null || delItem.Count == 0)
                         {
                             DBCon.db_agora.Entry(a).State = EntityState.Deleted;
                         }
                     }
-                    dbstate = DBCon.db_agora.SaveChanges();
-                }
 
-                return Json(new { Success = dbstate > 0, state = dbstate, Msg = "数据库更新成功" });
+                    dbstate = DBCon.db_agora.SaveChanges();
+                    string logTxt = "同期件数：" + pjList.projectInfos.Count + ",同期时间:" + DateTime.Now.ToString();
+                    sws.WriteLine(logTxt);
+                }
             }
             catch (Exception ex)
             {
-                return Json(new { Success = false, state = -1, Msg = ex.Message });
+                string errTxt = "同期失败，失败信息：" + ex.Message + ",失败时间：" + DateTime.Now.ToString();
+                sws.WriteLine(errTxt);
+            }
+            finally
+            {
+                sws.Close();
             }
         }
 
