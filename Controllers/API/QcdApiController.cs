@@ -851,15 +851,6 @@ namespace GitLabManager.Controllers.API
         [HttpGet]
         public IHttpActionResult GetUserEmail()
         {
-            var expceptUsers = new List<string> {
-                "project_2106_bot", "sonar","docker-image-qunkeduo",
-                "ghost","alert-bot", "support-bot", "jenkins-aipos",
-                "jenkins-qkd", "sonar-dcc", "jenkins-zgzn", "sonar-de",
-                "jenkins", "jenkins-cicd", "sonar-jc", "codereviewer",
-                "codemanager", "root","project_2433_bot","project_2434_bot",
-                "project_2435_bot"
-            };
-
             string userId = HttpContext.Current.Request.QueryString["userId"];
             string id = HttpContext.Current.Request.QueryString["id"];
 
@@ -871,7 +862,13 @@ namespace GitLabManager.Controllers.API
 
             try
             {
-                var users = DBCon.db.Users.Where(p => p.state == "active" && !expceptUsers.Any(p2 => p2 == p.username));
+                // GitLab 用户列表取得
+                var users = from u in DBCon.db.Users 
+                         join i in DBCon.db.Identities on u.id equals i.user_id
+                         where u.state == "active" && i.provider == "ldapmain"
+                         select u;
+
+                // 数据加工
                 foreach (var user in users)
                 {
                     var u = new ReturnUser
@@ -884,6 +881,7 @@ namespace GitLabManager.Controllers.API
                     retUsers.Add(u);
                 }
 
+                // 仓库成员取得（除去非GitLab用户）
                 foreach (var mem in memlist)
                 {
                     var chk = retUsers.Where(i => i.username == mem.MemberID).ToList();
@@ -893,9 +891,9 @@ namespace GitLabManager.Controllers.API
                     }
                 }
             }
-            catch
+            catch(Exception ex)
             {
-
+                return Json(new { User = "[]", List = "[]" ,error = ex.Message});
             }
 
             return Json(new { User = defaultUser, List = retUsers });
@@ -1056,6 +1054,5 @@ namespace GitLabManager.Controllers.API
             public string email { get; set; }
             public string username { get; set; }
         }
-
     }
 }
