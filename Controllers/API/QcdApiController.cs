@@ -267,7 +267,7 @@ namespace GitLabManager.Controllers.API
             public string avatar_url { get; set; }
         }
 
-        public  static void QCDProjectSync()
+        public static void QCDProjectSync()
         {
             string parentFolder = System.AppDomain.CurrentDomain.BaseDirectory
                     + "\\LOG";
@@ -597,7 +597,7 @@ namespace GitLabManager.Controllers.API
                     }
                 }
 
-                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount, myCount = myCount , starCount  = starCount });
+                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount, myCount = myCount, starCount = starCount });
             }
             catch
             {
@@ -625,8 +625,8 @@ namespace GitLabManager.Controllers.API
                 }
 
                 // 课题的命名空间取得
-                var  nameSpaces = DBCon.db.NameSpaces.ToList();
-                var  retList = new List<ReturnProjectView>();
+                var nameSpaces = DBCon.db.NameSpaces.ToList();
+                var retList = new List<ReturnProjectView>();
 
                 foreach (var p in pjInfo)
                 {
@@ -848,27 +848,71 @@ namespace GitLabManager.Controllers.API
             }
         }
 
+        [HttpGet]
+        public IHttpActionResult GetUserEmail()
+        {
+            var expceptUsers = new List<string> {
+                "project_2106_bot", "sonar","docker-image-qunkeduo",
+                "ghost","alert-bot", "support-bot", "jenkins-aipos",
+                "jenkins-qkd", "sonar-dcc", "jenkins-zgzn", "sonar-de",
+                "jenkins", "jenkins-cicd", "sonar-jc", "codereviewer",
+                "codemanager", "root","project_2433_bot","project_2434_bot",
+                "project_2435_bot"
+            };
+
+            string userId = HttpContext.Current.Request.QueryString["userId"];
+            string id = HttpContext.Current.Request.QueryString["id"];
+
+            var agreList = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == id).FirstOrDefault();
+            var memlist = JsonConvert.DeserializeObject<List<MemberInfo>>(agreList.member_ids);
+
+            var retUsers = new List<ReturnUser>();
+            var defaultUser = new List<string>();
+
+            try
+            {
+                var users = DBCon.db.Users.Where(p => p.state == "active" && !expceptUsers.Any(p2 => p2 == p.username));
+                foreach (var user in users)
+                {
+                    var u = new ReturnUser
+                    {
+                        id = user.id,
+                        username = user.username,
+                        emailShow = user.name + "(" + user.username + ")",
+                        email = user.email
+                    };
+                    retUsers.Add(u);
+                }
+
+                foreach (var mem in memlist)
+                {
+                    var chk = retUsers.Where(i => i.username == mem.MemberID).ToList();
+                    if (chk != null && chk.Count > 0)
+                    {
+                        defaultUser.Add(mem.MemberID);
+                    }
+                }
+            }
+            catch
+            {
+
+            }
+
+            return Json(new { User = defaultUser, List = retUsers });
+        }
+
         [HttpPost]
         public IHttpActionResult QCDCodeReview(QCDCodeReviewReq req)
         {
+            string debugFlag = ConfigurationManager.AppSettings["msg_send"];
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
 
             StringBuilder sb = new StringBuilder();
             User user = DBCon.db.Users.Where(i => i.username.Equals(req.userId)).FirstOrDefault();
-
+            
             // 项目成员邮件取得(CC人员)
-            string memberEmails = "";
-            var agreList = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == req.id).FirstOrDefault();
-            var memlist = JsonConvert.DeserializeObject<List<MemberInfo>>(agreList.member_ids);
-            foreach (var mem in memlist)
-            {
-                var u = DBCon.db.Users.Where(i => i.username.Equals(mem.MemberID)).FirstOrDefault();
-                if (u != null && u.email !=null && u.email != "")
-                {
-                    memberEmails = memberEmails + u.email + ",";
-                }
-            }
+            string memberEmails = (req.ccMail == null || req.ccMail == "")?"" : req.ccMail;
 
             // 邮件标题
             string title = "【" + req.id + ":" + req.name + " 】项目核心代码审查申请";
@@ -911,14 +955,27 @@ namespace GitLabManager.Controllers.API
 
             try
             {
-                //string strCc = "2200714gao_changshui@cn.tre-inc.com"; //测试用，暂时保留
-                //string strTo = "2200714gao_changshui@cn.tre-inc.com"; //测试用，暂时保留
-                //string strCc = "10216491cheng_xialin@cn.tre-inc.com,2200714gao_changshui@cn.tre-inc.com,10004397liu_zhaoqing@cn.tre-inc.com"; //测试用，暂时保留
-
                 // 收件人(多人用“,”分开)
                 string strTo = "technicalcommittee@cn.tre-inc.com";
                 // 抄送人(多人用“,”分开)
-                string strCc = memberEmails + "qualityassurance@cn.tre-inc.com";
+                string strCc = "";
+
+                if (debugFlag == "true")
+                {
+                    if (strCc != "")
+                    {
+                        strCc = memberEmails + "," + "qualityassurance@cn.tre-inc.com";
+                    }
+                    else
+                    {
+                        strCc = "qualityassurance@cn.tre-inc.com";
+                    }
+                }
+                else
+                {
+                    strTo = "2200714gao_changshui@cn.tre-inc.com"; //测试用，暂时保留
+                    strCc = memberEmails;
+                }
 
                 //邮件发送
                 smtp.SendMail(user.email, strTo, strCc, title, sb.ToString());
@@ -991,5 +1048,14 @@ namespace GitLabManager.Controllers.API
             }
             return StatusName;
         }
+
+        private class ReturnUser
+        {
+            public int id { get; set; }
+            public string emailShow { get; set; }
+            public string email { get; set; }
+            public string username { get; set; }
+        }
+
     }
 }
