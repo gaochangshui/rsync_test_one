@@ -577,6 +577,11 @@ namespace GitLabManager.Controllers.API
         [HttpGet]
         public IHttpActionResult RequestTechnicalCommitteeReview()
         {
+            string debugFlag = ConfigurationManager.AppSettings["msg_send"];
+
+            string strTo = "technicalcommittee@cn.tre-inc.com";
+            string strCc = "qualityassurance@cn.tre-inc.com";
+
             string pj_id = HttpContext.Current.Request.QueryString["pj_id"];
             string user_cd = HttpContext.Current.Request.QueryString["user_cd"];
             string branchs = HttpContext.Current.Request.QueryString["branchs"];
@@ -614,6 +619,12 @@ namespace GitLabManager.Controllers.API
             var result = response.Content.ReadAsStringAsync().Result;
             SingleProject project = JsonConvert.DeserializeObject<SingleProject>(result);
 
+            if (debugFlag == "false")
+            {
+                 strTo = "2200714gao_changshui@cn.tre-inc.com";
+                 strCc = user.email;
+            }
+
             string emailContent = "技术委员会负责人，您好：<br/>" +
                 "申请技术委员会支持，对核心代码Review。<br/>" +
                 "请技术委员会协调人员做一次Review。<br/>" +
@@ -626,7 +637,7 @@ namespace GitLabManager.Controllers.API
                 "期望完成日期：" + desire_date + "<br/>" +
                 "备注：" + comment;
             string title = "["+ qcd_project == ""?"GitLabmanager": qcd_project + "]核心代码Reviewer申请";
-            smtp.SendMail(user.email, "technicalcommittee@cn.tre-inc.com", "qualityassurance@cn.tre-inc.com", title, emailContent);
+            smtp.SendMail(user.email, strTo, strCc, title, emailContent);
             return Ok(result2);
         }
 
