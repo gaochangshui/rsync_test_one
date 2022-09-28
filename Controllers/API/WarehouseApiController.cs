@@ -290,6 +290,10 @@ namespace GitLabManager.Controllers.API
 
         public static Page_Warehouses GetWarehouses(string pj_name, string group_name, string pageNum, string pageSize, List<Project> projects)
         {
+            string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
+            string persionFace = ConfigurationManager.AppSettings["persion_face"].Replace("match(gitlab_url)", gitlabUrl);
+            string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
+
             String sql = "select " +
                         "cast(p.id as VARCHAR) as id,p.name as pj_name " +
                         ",cast(p.creator_id as VARCHAR) as creator_id " +
@@ -306,7 +310,7 @@ namespace GitLabManager.Controllers.API
                         "         '''id''', u1.id || ''''," +
                         "         ',''name''', u1.name || ''''," +
                         "         ',''access_level''', case when m1.access_level=50 then 'Owner' when m1.access_level=40 then 'M' when m1.access_level=30 then 'D' when m1.access_level=20 then 'R' when m1.access_level=10 then 'G' end || ''''," +
-                        "         ',''avatar''', 'https://code.trechina.cn/gitlab/uploads/-/system/user/avatar/' || u1.id || '/' || u1.avatar || ''''" +
+                        "         ',''avatar''', '"+ persionFace + "' || u1.id || '/' || u1.avatar || ''''" +
                         "     ), '},{'" +
                         " ) || '}', ':'',', ',')AS project_member" +
 
@@ -316,7 +320,7 @@ namespace GitLabManager.Controllers.API
                         "         '''id''', u2.id || ''''," +
                         "         ',''name''', u2.name || ''''," +
                         "         ',''access_level''', case when m2.access_level=50 then 'Owner' when m2.access_level=40 then 'M' when m2.access_level=30 then 'D' when m2.access_level=20 then 'R' when m2.access_level=10 then 'G' end || ''''," +
-                        "         ',''avatar''', 'https://code.trechina.cn/gitlab/uploads/-/system/user/avatar/' || u2.id || '/' || u2.avatar || ''''" +
+                        "         ',''avatar''', '" + persionFace + "' || u2.id || '/' || u2.avatar || ''''" +
                         "     ), '},{'" +
                         " ) || '}', ':'',', ',')AS group_member" +
 
@@ -404,12 +408,12 @@ namespace GitLabManager.Controllers.API
                 if (li.group_member.Contains(nullAvatar))
                 {
                     string stra = li.group_member;
-                    li.group_member = stra.Replace(nullAvatar, ",'avatar':'https://code.trechina.cn/gitlab/assets/no_avatar-849f9c04a3a0d0cea2424ae97b27447dc64a7dbfae83c036c45b403392f0e8ba.png'}");
+                    li.group_member = stra.Replace(nullAvatar, ",'avatar':'" + defaultFace + "'}");
                 }
                 if (li.project_member.Contains(nullAvatar))
                 {
                     string stra = li.project_member;
-                    li.project_member = stra.Replace(nullAvatar, ",'avatar':'https://code.trechina.cn/gitlab/assets/no_avatar-849f9c04a3a0d0cea2424ae97b27447dc64a7dbfae83c036c45b403392f0e8ba.png'}");
+                    li.project_member = stra.Replace(nullAvatar, ",'avatar':'" + defaultFace + "'}");
                 }
             }
             Page_Warehouses page_ = new Page_Warehouses();

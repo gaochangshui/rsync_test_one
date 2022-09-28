@@ -52,6 +52,8 @@ namespace GetUserAvatar.Controllers
         {
             string ldapUserName = model.UserCD;
             string ldapPassword = model.Password;
+
+            string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
             try
             {
                 string systemId = ConfigurationManager.AppSettings["SystemId"];
@@ -77,7 +79,7 @@ namespace GetUserAvatar.Controllers
                     catch (Exception)
                     {
                         model.AvatarUrl = "";
-                        model.WebUrl = "https://code.trechina.cn/gitlab";
+                        model.WebUrl = gitlabUrl;
                     }
                     return true;
                 }
