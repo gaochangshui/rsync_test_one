@@ -825,6 +825,7 @@ namespace GitLabManager.Controllers.API
             }
         }
 
+        [HttpGet]
         public static void SendDingDingMsg()
         {
             string parentFolder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
@@ -867,7 +868,7 @@ namespace GitLabManager.Controllers.API
                         + "\n代码审计和帮助请参考：http://docs.trechina.cn/docs/code_management/audit_rules";
 
                     // 发送通知
-                    //client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
+                    client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
 
                     // 发送成功日志
                     string logTxt ="通知日期：" + yday;
@@ -926,6 +927,7 @@ namespace GitLabManager.Controllers.API
                 var response = httpClient.GetAsync(api).Result;
                 var result = response.Content.ReadAsStringAsync().Result;
                 var list = JsonConvert.DeserializeObject<List<NoCodeUserMode>>(result);
+                var retList = new List<NoCodeUserMode>();
 
                 // 根据人员CD和项目CD 添加用户名
                 foreach (var i in list)
@@ -940,11 +942,15 @@ namespace GitLabManager.Controllers.API
                     if(qcd != null && qcd.agreement_name != null)
                     {
                         i.PJName = qcd.agreement_name;
+                        if (i.EmployeeName != null)
+                        {
+                            retList.Add(i);
+                        }
                     }
                 }
 
                 // 结果返回
-                return list;
+                return retList;
             }
             catch
             {
