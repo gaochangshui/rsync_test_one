@@ -328,7 +328,7 @@ namespace GitLabManager.Controllers.API
                         "From " +
                         "public.projects as p " +
                         "inner join public.namespaces as n on p.namespace_id=n.id " +
-                        "left join public.members as m1 on p.id=m1.source_id and m1.source_type='Project' " +
+                        "left join public.members as m1 on p.id=m1.source_id and m1.source_type='Project' and m1.user_id is not null " +
                         "left join public.members as m2 on n.id=m2.source_id and m2.source_type='Namespace' " +
                         "left join public.users as u1 on m1.user_id=u1.id " +
                         "left join public.users as u2 on m2.user_id=u2.id " +
