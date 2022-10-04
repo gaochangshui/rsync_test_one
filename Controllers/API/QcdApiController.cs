@@ -14,8 +14,11 @@ using System.Web.Http;
 using GitLabManager.BLL;
 using System.Configuration;
 using System.Text;
+using GitlabManager.App_Start;
+
 namespace GitLabManager.Controllers.API
 {
+    [ApiAuthorize]
     public class QcdApiController : ApiController
     {
         //public static ApplicationDbContext db = new ApplicationDbContext();

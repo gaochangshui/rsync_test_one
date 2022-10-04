@@ -1,7 +1,7 @@
 ﻿using DingDingManager.BLL;
 using GetUserAvatar.Models;
 using GitlabManager.Controllers;
-using GitlabManager.DataContext;
+using GitlabManager.App_Start;
 using GitlabManager.Models;
 using GitLabManager.BLL;
 using GitLabManager.Models;
@@ -21,6 +21,7 @@ using System.Threading;
 
 namespace GitLabManager.Controllers.API
 {
+    [ApiAuthorize]
     public class WarehouseApiController : ApiController
     {
         // public static ApplicationDbContext db = new ApplicationDbContext();
