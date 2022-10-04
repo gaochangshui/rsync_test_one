@@ -9,15 +9,12 @@ using JWT;
 using JWT.Algorithms;
 using JWT.Serializers;
 using System.Text;
-using GitlabManager.Models;
-using System.Web.Http;
 
 namespace GitLabManager.Controllers.API
 {
     public class AccountApiController : ApiController
     {
         private ApplicationDbContext db = new ApplicationDbContext();
-
 
         [HttpPost]
         public IHttpActionResult Login(LoginModel model)
