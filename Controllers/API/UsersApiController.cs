@@ -2,9 +2,11 @@
 using System;
 using System.Web;
 using System.Web.Http;
+using GitlabManager.App_Start;
 
 namespace GitLabManager.Controllers.API
 {
+    [ApiAuthorize]
     public class UsersApiController : ApiController
     {
         private static string path = AppDomain.CurrentDomain.BaseDirectory;

@@ -131,6 +131,7 @@ namespace GitLabManager.Models
         public string reviewInfo { get; set; }
         public string expecteDate{ get; set; }
         public string comment { get; set; }
+        public string ccMail { get; set; }
 
         public List<CodeReviewItem> reviewItem { get; set; }
     }

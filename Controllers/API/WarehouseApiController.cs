@@ -1,7 +1,7 @@
 ﻿using DingDingManager.BLL;
 using GetUserAvatar.Models;
 using GitlabManager.Controllers;
-using GitlabManager.DataContext;
+using GitlabManager.App_Start;
 using GitlabManager.Models;
 using GitLabManager.BLL;
 using GitLabManager.Models;
@@ -21,6 +21,7 @@ using System.Threading;
 
 namespace GitLabManager.Controllers.API
 {
+    [ApiAuthorize]
     public class WarehouseApiController : ApiController
     {
         // public static ApplicationDbContext db = new ApplicationDbContext();
@@ -290,6 +291,10 @@ namespace GitLabManager.Controllers.API
 
         public static Page_Warehouses GetWarehouses(string pj_name, string group_name, string pageNum, string pageSize, List<Project> projects)
         {
+            string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
+            string persionFace = ConfigurationManager.AppSettings["persion_face"].Replace("match(gitlab_url)", gitlabUrl);
+            string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
+
             String sql = "select " +
                         "cast(p.id as VARCHAR) as id,p.name as pj_name " +
                         ",cast(p.creator_id as VARCHAR) as creator_id " +
@@ -306,7 +311,7 @@ namespace GitLabManager.Controllers.API
                         "         '''id''', u1.id || ''''," +
                         "         ',''name''', u1.name || ''''," +
                         "         ',''access_level''', case when m1.access_level=50 then 'Owner' when m1.access_level=40 then 'M' when m1.access_level=30 then 'D' when m1.access_level=20 then 'R' when m1.access_level=10 then 'G' end || ''''," +
-                        "         ',''avatar''', 'https://code.trechina.cn/gitlab/uploads/-/system/user/avatar/' || u1.id || '/' || u1.avatar || ''''" +
+                        "         ',''avatar''', '"+ persionFace + "' || u1.id || '/' || u1.avatar || ''''" +
                         "     ), '},{'" +
                         " ) || '}', ':'',', ',')AS project_member" +
 
@@ -316,7 +321,7 @@ namespace GitLabManager.Controllers.API
                         "         '''id''', u2.id || ''''," +
                         "         ',''name''', u2.name || ''''," +
                         "         ',''access_level''', case when m2.access_level=50 then 'Owner' when m2.access_level=40 then 'M' when m2.access_level=30 then 'D' when m2.access_level=20 then 'R' when m2.access_level=10 then 'G' end || ''''," +
-                        "         ',''avatar''', 'https://code.trechina.cn/gitlab/uploads/-/system/user/avatar/' || u2.id || '/' || u2.avatar || ''''" +
+                        "         ',''avatar''', '" + persionFace + "' || u2.id || '/' || u2.avatar || ''''" +
                         "     ), '},{'" +
                         " ) || '}', ':'',', ',')AS group_member" +
 
@@ -324,7 +329,7 @@ namespace GitLabManager.Controllers.API
                         "From " +
                         "public.projects as p " +
                         "inner join public.namespaces as n on p.namespace_id=n.id " +
-                        "left join public.members as m1 on p.id=m1.source_id and m1.source_type='Project' " +
+                        "left join public.members as m1 on p.id=m1.source_id and m1.source_type='Project' and m1.user_id is not null " +
                         "left join public.members as m2 on n.id=m2.source_id and m2.source_type='Namespace' " +
                         "left join public.users as u1 on m1.user_id=u1.id " +
                         "left join public.users as u2 on m2.user_id=u2.id " +
@@ -404,12 +409,12 @@ namespace GitLabManager.Controllers.API
                 if (li.group_member.Contains(nullAvatar))
                 {
                     string stra = li.group_member;
-                    li.group_member = stra.Replace(nullAvatar, ",'avatar':'https://code.trechina.cn/gitlab/assets/no_avatar-849f9c04a3a0d0cea2424ae97b27447dc64a7dbfae83c036c45b403392f0e8ba.png'}");
+                    li.group_member = stra.Replace(nullAvatar, ",'avatar':'" + defaultFace + "'}");
                 }
                 if (li.project_member.Contains(nullAvatar))
                 {
                     string stra = li.project_member;
-                    li.project_member = stra.Replace(nullAvatar, ",'avatar':'https://code.trechina.cn/gitlab/assets/no_avatar-849f9c04a3a0d0cea2424ae97b27447dc64a7dbfae83c036c45b403392f0e8ba.png'}");
+                    li.project_member = stra.Replace(nullAvatar, ",'avatar':'" + defaultFace + "'}");
                 }
             }
             Page_Warehouses page_ = new Page_Warehouses();
@@ -577,6 +582,11 @@ namespace GitLabManager.Controllers.API
         [HttpGet]
         public IHttpActionResult RequestTechnicalCommitteeReview()
         {
+            string debugFlag = ConfigurationManager.AppSettings["msg_send"];
+
+            string strTo = "technicalcommittee@cn.tre-inc.com";
+            string strCc = "qualityassurance@cn.tre-inc.com";
+
             string pj_id = HttpContext.Current.Request.QueryString["pj_id"];
             string user_cd = HttpContext.Current.Request.QueryString["user_cd"];
             string branchs = HttpContext.Current.Request.QueryString["branchs"];
@@ -614,6 +624,12 @@ namespace GitLabManager.Controllers.API
             var result = response.Content.ReadAsStringAsync().Result;
             SingleProject project = JsonConvert.DeserializeObject<SingleProject>(result);
 
+            if (debugFlag == "false")
+            {
+                 strTo = "2200714gao_changshui@cn.tre-inc.com";
+                 strCc = user.email;
+            }
+
             string emailContent = "技术委员会负责人，您好：<br/>" +
                 "申请技术委员会支持，对核心代码Review。<br/>" +
                 "请技术委员会协调人员做一次Review。<br/>" +
@@ -626,7 +642,7 @@ namespace GitLabManager.Controllers.API
                 "期望完成日期：" + desire_date + "<br/>" +
                 "备注：" + comment;
             string title = "["+ qcd_project == ""?"GitLabmanager": qcd_project + "]核心代码Reviewer申请";
-            smtp.SendMail(user.email, "technicalcommittee@cn.tre-inc.com", "qualityassurance@cn.tre-inc.com", title, emailContent);
+            smtp.SendMail(user.email, strTo, strCc, title, emailContent);
             return Ok(result2);
         }
 
@@ -810,6 +826,7 @@ namespace GitLabManager.Controllers.API
             }
         }
 
+        [HttpGet]
         public static void SendDingDingMsg()
         {
             string parentFolder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
@@ -852,7 +869,7 @@ namespace GitLabManager.Controllers.API
                         + "\n代码审计和帮助请参考：http://docs.trechina.cn/docs/code_management/audit_rules";
 
                     // 发送通知
-                    //client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
+                    client.SendMessage(AccessToken, AgentId, dingDingId, Msg, "");
 
                     // 发送成功日志
                     string logTxt ="通知日期：" + yday;
@@ -911,6 +928,7 @@ namespace GitLabManager.Controllers.API
                 var response = httpClient.GetAsync(api).Result;
                 var result = response.Content.ReadAsStringAsync().Result;
                 var list = JsonConvert.DeserializeObject<List<NoCodeUserMode>>(result);
+                var retList = new List<NoCodeUserMode>();
 
                 // 根据人员CD和项目CD 添加用户名
                 foreach (var i in list)
@@ -925,11 +943,15 @@ namespace GitLabManager.Controllers.API
                     if(qcd != null && qcd.agreement_name != null)
                     {
                         i.PJName = qcd.agreement_name;
+                        if (i.EmployeeName != null)
+                        {
+                            retList.Add(i);
+                        }
                     }
                 }
 
                 // 结果返回
-                return list;
+                return retList;
             }
             catch
             {

@@ -19,7 +19,18 @@ namespace GitlabManager.Models
         public string preferred_language { get; set; }
         public bool external { get; set; }
         public bool admin { get; set; }
+        public string state { get; set; }
     }
+
+    [Table("identities", Schema = "public")]
+    public class Identities
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+        public int id { get; set; }
+        public string provider { get; set; }
+        public int user_id { get; set; }
+    }
+
     public class LoginModel
     {
         [Required(ErrorMessage = "Please enter the {0}.")]

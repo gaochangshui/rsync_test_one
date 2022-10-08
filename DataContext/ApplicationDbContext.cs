@@ -19,5 +19,6 @@ namespace GitlabManager.DataContext
         public virtual DbSet<Projects> Projects { get; set; }
         public virtual DbSet<NameSpaces> NameSpaces { get; set; }
         public virtual DbSet<Members> Members { get; set; }
+        public virtual DbSet<Identities> Identities { get; set; }
     }
 }

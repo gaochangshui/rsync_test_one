@@ -14,8 +14,11 @@ using System.Web.Http;
 using GitLabManager.BLL;
 using System.Configuration;
 using System.Text;
+using GitlabManager.App_Start;
+
 namespace GitLabManager.Controllers.API
 {
+    [ApiAuthorize]
     public class QcdApiController : ApiController
     {
         //public static ApplicationDbContext db = new ApplicationDbContext();
@@ -63,6 +66,10 @@ namespace GitLabManager.Controllers.API
 
         public static Page_Warehouses GetWarehouses(string pj_name, string group_name, string pageNum, string pageSize, List<Project> projects)
         {
+            string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
+            string persionFace = ConfigurationManager.AppSettings["persion_face"].Replace("match(gitlab_url)", gitlabUrl);
+            string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
+
             String sql = "select " +
                         "cast(p.id as VARCHAR) as id,p.name as pj_name " +
                         ",cast(p.creator_id as VARCHAR) as creator_id " +
@@ -79,7 +86,7 @@ namespace GitLabManager.Controllers.API
                         "         '''id''', u1.id || ''''," +
                         "         ',''name''', u1.name || ''''," +
                         "         ',''access_level''', case when m1.access_level=50 then 'Owner' when m1.access_level=40 then 'M' when m1.access_level=30 then 'D' when m1.access_level=20 then 'R' when m1.access_level=10 then 'G' end || ''''," +
-                        "         ',''avatar''', 'https://code.trechina.cn/gitlab/uploads/-/system/user/avatar/' || u1.id || '/' || u1.avatar || ''''" +
+                        "         ',''avatar''', '"+ persionFace + "' || u1.id || '/' || u1.avatar || ''''" +
                         "     ), '},{'" +
                         " ) || '}', ':'',', ',')AS project_member" +
 
@@ -89,7 +96,7 @@ namespace GitLabManager.Controllers.API
                         "         '''id''', u2.id || ''''," +
                         "         ',''name''', u2.name || ''''," +
                         "         ',''access_level''', case when m2.access_level=50 then 'Owner' when m2.access_level=40 then 'M' when m2.access_level=30 then 'D' when m2.access_level=20 then 'R' when m2.access_level=10 then 'G' end || ''''," +
-                        "         ',''avatar''', 'https://code.trechina.cn/gitlab/uploads/-/system/user/avatar/' || u2.id || '/' || u2.avatar || ''''" +
+                        "         ',''avatar''', '" + persionFace + "' || u2.id || '/' || u2.avatar || ''''" +
                         "     ), '},{'" +
                         " ) || '}', ':'',', ',')AS group_member" +
 
@@ -97,7 +104,7 @@ namespace GitLabManager.Controllers.API
                         "From " +
                         "public.projects as p " +
                         "inner join public.namespaces as n on p.namespace_id=n.id " +
-                        "left join public.members as m1 on p.id=m1.source_id and m1.source_type='Project' " +
+                        "left join public.members as m1 on p.id=m1.source_id and m1.source_type='Project' and m1.user_id is not null " +
                         "left join public.members as m2 on n.id=m2.source_id and m2.source_type='Namespace' " +
                         "left join public.users as u1 on m1.user_id=u1.id " +
                         "left join public.users as u2 on m2.user_id=u2.id " +
@@ -177,12 +184,12 @@ namespace GitLabManager.Controllers.API
                 if (li.group_member.Contains(nullAvatar))
                 {
                     string stra = li.group_member;
-                    li.group_member = stra.Replace(nullAvatar, ",'avatar':'https://code.trechina.cn/gitlab/assets/no_avatar-849f9c04a3a0d0cea2424ae97b27447dc64a7dbfae83c036c45b403392f0e8ba.png'}");
+                    li.group_member = stra.Replace(nullAvatar, ",'avatar':'" + defaultFace + "'}");
                 }
                 if (li.project_member.Contains(nullAvatar))
                 {
                     string stra = li.project_member;
-                    li.project_member = stra.Replace(nullAvatar, ",'avatar':'https://code.trechina.cn/gitlab/assets/no_avatar-849f9c04a3a0d0cea2424ae97b27447dc64a7dbfae83c036c45b403392f0e8ba.png'}");
+                    li.project_member = stra.Replace(nullAvatar, ",'avatar':'" + defaultFace + "'}");
                 }
             }
             Page_Warehouses page_ = new Page_Warehouses();
@@ -232,13 +239,16 @@ namespace GitLabManager.Controllers.API
 
         public List<MemberInfo> MemberConvert(List<MemberInfo> member, List<memberinfo> user)
         {
+            string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
+            string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
+
             foreach (var m in member)
             {
                 var url = user.Where(u => u.username == m.MemberID).ToList();
                 if (url == null || url.Count == 0 || url[0].avatar_url == null || url[0].avatar_url == "")
                 {
                     // 成员头像不存在的情况下，用指定图片地址代替。
-                    m.avatar = "https://code.trechina.cn/gitlab/assets/no_avatar-849f9c04a3a0d0cea2424ae97b27447dc64a7dbfae83c036c45b403392f0e8ba.png";
+                    m.avatar = defaultFace;
                 }
                 else
                 {
@@ -267,7 +277,7 @@ namespace GitLabManager.Controllers.API
             public string avatar_url { get; set; }
         }
 
-        public  static void QCDProjectSync()
+        public static void QCDProjectSync()
         {
             string parentFolder = System.AppDomain.CurrentDomain.BaseDirectory
                     + "\\LOG";
@@ -519,7 +529,7 @@ namespace GitLabManager.Controllers.API
                     agreList = agreList.Where(i => i.agreement_cd.IndexOf(projectInfo) >= 0 || i.agreement_name.ToLower().IndexOf(projectInfo.ToLower()) >= 0).ToList();
                 }
 
-                agreList = agreList.OrderBy(i => i.updated_at).ToList();
+                agreList = agreList.OrderByDescending(i => i.updated_at).ToList();
 
                 int dataCount = agreList.Count;
                 //分页表示
@@ -597,7 +607,7 @@ namespace GitLabManager.Controllers.API
                     }
                 }
 
-                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount, myCount = myCount , starCount  = starCount });
+                return Json(new { allCount = allCount, doingCount = doingCount, endCount = endCount, myCount = myCount, starCount = starCount });
             }
             catch
             {
@@ -625,8 +635,8 @@ namespace GitLabManager.Controllers.API
                 }
 
                 // 课题的命名空间取得
-                var  nameSpaces = DBCon.db.NameSpaces.ToList();
-                var  retList = new List<ReturnProjectView>();
+                var nameSpaces = DBCon.db.NameSpaces.ToList();
+                var retList = new List<ReturnProjectView>();
 
                 foreach (var p in pjInfo)
                 {
@@ -848,27 +858,69 @@ namespace GitLabManager.Controllers.API
             }
         }
 
+        [HttpGet]
+        public IHttpActionResult GetUserEmail()
+        {
+            string userId = HttpContext.Current.Request.QueryString["userId"];
+            string id = HttpContext.Current.Request.QueryString["id"];
+
+            var agreList = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == id).FirstOrDefault();
+            var memlist = JsonConvert.DeserializeObject<List<MemberInfo>>(agreList.member_ids);
+
+            var retUsers = new List<ReturnUser>();
+            var defaultUser = new List<string>();
+
+            try
+            {
+                // GitLab 用户列表取得
+                var users = from u in DBCon.db.Users 
+                         join i in DBCon.db.Identities on u.id equals i.user_id
+                         where u.state == "active" && i.provider == "ldapmain"
+                         select u;
+
+                // 数据加工
+                foreach (var user in users)
+                {
+                    var u = new ReturnUser
+                    {
+                        id = user.id,
+                        username = user.username,
+                        emailShow = user.name + "(" + user.username + ")",
+                        email = user.email
+                    };
+                    retUsers.Add(u);
+                }
+
+                // 仓库成员取得（除去非GitLab用户）
+                foreach (var mem in memlist)
+                {
+                    var chk = retUsers.Where(i => i.username == mem.MemberID).ToList();
+                    if (chk != null && chk.Count > 0)
+                    {
+                        defaultUser.Add(mem.MemberID);
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                return Json(new { User = "[]", List = "[]" ,error = ex.Message});
+            }
+
+            return Json(new { User = defaultUser, List = retUsers });
+        }
+
         [HttpPost]
         public IHttpActionResult QCDCodeReview(QCDCodeReviewReq req)
         {
+            string debugFlag = ConfigurationManager.AppSettings["msg_send"];
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
 
             StringBuilder sb = new StringBuilder();
             User user = DBCon.db.Users.Where(i => i.username.Equals(req.userId)).FirstOrDefault();
-
+            
             // 项目成员邮件取得(CC人员)
-            string memberEmails = "";
-            var agreList = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == req.id).FirstOrDefault();
-            var memlist = JsonConvert.DeserializeObject<List<MemberInfo>>(agreList.member_ids);
-            foreach (var mem in memlist)
-            {
-                var u = DBCon.db.Users.Where(i => i.username.Equals(mem.MemberID)).FirstOrDefault();
-                if (u != null && u.email !=null && u.email != "")
-                {
-                    memberEmails = memberEmails + u.email + ",";
-                }
-            }
+            string memberEmails = (req.ccMail == null || req.ccMail == "")?"" : req.ccMail;
 
             // 邮件标题
             string title = "【" + req.id + ":" + req.name + " 】项目核心代码审查申请";
@@ -911,14 +963,27 @@ namespace GitLabManager.Controllers.API
 
             try
             {
-                //string strCc = "2200714gao_changshui@cn.tre-inc.com"; //测试用，暂时保留
-                //string strTo = "2200714gao_changshui@cn.tre-inc.com"; //测试用，暂时保留
-                //string strCc = "10216491cheng_xialin@cn.tre-inc.com,2200714gao_changshui@cn.tre-inc.com,10004397liu_zhaoqing@cn.tre-inc.com"; //测试用，暂时保留
-
                 // 收件人(多人用“,”分开)
                 string strTo = "technicalcommittee@cn.tre-inc.com";
                 // 抄送人(多人用“,”分开)
-                string strCc = memberEmails + "qualityassurance@cn.tre-inc.com";
+                string strCc = "";
+
+                if (debugFlag == "true")
+                {
+                    if (strCc != "")
+                    {
+                        strCc = memberEmails + "," + "qualityassurance@cn.tre-inc.com";
+                    }
+                    else
+                    {
+                        strCc = "qualityassurance@cn.tre-inc.com";
+                    }
+                }
+                else
+                {
+                    strTo = "2200714gao_changshui@cn.tre-inc.com"; //测试用，暂时保留
+                    strCc = memberEmails;
+                }
 
                 //邮件发送
                 smtp.SendMail(user.email, strTo, strCc, title, sb.ToString());
@@ -990,6 +1055,14 @@ namespace GitLabManager.Controllers.API
                     break;
             }
             return StatusName;
+        }
+
+        private class ReturnUser
+        {
+            public int id { get; set; }
+            public string emailShow { get; set; }
+            public string email { get; set; }
+            public string username { get; set; }
         }
     }
 }

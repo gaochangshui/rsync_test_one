@@ -10,9 +10,11 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Web.Http;
 using static GitlabManager.Controllers.UsersController;
+using GitlabManager.App_Start;
 
 namespace GitLabManager.Controllers
 {
+    [ApiAuthorize]
     public class APIv1Controller : ApiController
     {
         private ApplicationDbContext db = new ApplicationDbContext();

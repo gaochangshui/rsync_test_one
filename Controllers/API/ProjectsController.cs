@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Web.Http;
-using GitlabManager.DataContext;
+using GitlabManager.App_Start;
 using GitLabManager.DataContext;
 using GitlabManager.Models;
 using GitLabManager.Models;
@@ -15,6 +15,7 @@ using System.IO;
 
 namespace GitLabManager.Controllers.API
 {
+    [ApiAuthorize]
     public class ProjectsController : ApiController
     {
         // public static ApplicationDbContext db = new ApplicationDbContext();
