@@ -29,7 +29,7 @@ namespace GitlabManager.Controllers
             AuthInfo authInfo = new AuthInfo()
             {
                 UserId = loginRequest.UserId,
-                Expires = DateTime.Now.AddMinutes(Convert.ToInt32(timeStamp))
+                Expires = DateTime.Now.AddMinutes(loginRequest.Expires)
             };
 
             IJsonSerializer serializer = new JsonNetSerializer();// 序列化Json

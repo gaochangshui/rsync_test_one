@@ -21,17 +21,21 @@ namespace GitLabManager.Controllers.API
         {
             if (ModelState.IsValid && AccountController.apiLogin(model))
             {
-                HttpContext.Current.Response.Cookies["LoginedUser"].Value = model.UserCD;
-                HttpContext.Current.Response.Cookies["LoginedUserName"].Value = model.UserName;
-                HttpContext.Current.Response.Cookies["LoginedUserAvatar"].Value = model.AvatarUrl;
-                HttpContext.Current.Response.Cookies["LoginedUserWeb"].Value = model.WebUrl;
-                HttpContext.Current.Response.Cookies["UserRole"].Value = AccountController.getUserRole(model.UserCD);
-                HttpContext.Current.Response.Cookies["ClientIP"].Value = HttpContext.Current.Request.ServerVariables["HTTP_X_FORWARDED_FOR"];
                 // token make
                 var token = CreateToken(model.UserCD);
-
-                return Json(new { UserCD = model.UserCD, AvatarUrl = model.AvatarUrl,Token = token });
+                var userRole = AccountController.getUserRole(model.UserCD);
+                var timeStamp = ConfigurationManager.AppSettings["TimeStamp"];
+                return Json(new { 
+                    LoginedUser = model.UserCD, 
+                    LoginedUserName = model.UserName ,
+                    LoginedUserAvatar = model.AvatarUrl,
+                    LoginedUserWeb = model.WebUrl,
+                    UserRole = userRole,
+                    Expires = timeStamp,
+                    ClientIP = HttpContext.Current.Request.ServerVariables["HTTP_X_FORWARDED_FOR"],
+                    UserCD = model.UserCD, AvatarUrl = model.AvatarUrl,Token = token });
             }
+
             ModelState.AddModelError("", "UserCode or Password is invalid.");
             return Ok(ModelState);
         }
