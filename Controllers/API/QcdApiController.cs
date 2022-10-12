@@ -912,7 +912,7 @@ namespace GitLabManager.Controllers.API
         [HttpPost]
         public IHttpActionResult QCDCodeReview(QCDCodeReviewReq req)
         {
-            string debugFlag = ConfigurationManager.AppSettings["msg_send"];
+            string releaseFlag = ConfigurationManager.AppSettings["msg_send"];
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
 
@@ -968,9 +968,9 @@ namespace GitLabManager.Controllers.API
                 // 抄送人(多人用“,”分开)
                 string strCc = "";
 
-                if (debugFlag == "true")
+                if (releaseFlag == "true")
                 {
-                    if (strCc != "")
+                    if (memberEmails != "")
                     {
                         strCc = memberEmails + "," + "qualityassurance@cn.tre-inc.com";
                     }
