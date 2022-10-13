@@ -258,7 +258,7 @@ namespace GitLabManager.Controllers.API
                 File.Copy(source, baseFolder + "\\.gitignore",true);
 
                 // 6.main 分支代码push
-                var isSuccess = PushMainBranch(token, baseFolder);
+                var isSuccess = PushMainBranch(token, baseFolder,req.qcdId);
 
                 if (isSuccess)
                 {
@@ -280,10 +280,13 @@ namespace GitLabManager.Controllers.API
             }
         }
 
-        private bool PushMainBranch(string token,string repository)
+        private bool PushMainBranch(string token,string repository,string qcdid = "")
         {
             try
             {
+                // 根据id检索出既存信息
+                var _agre = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == qcdid).FirstOrDefault();
+                var commitMsg = "main 初始化（关联项目" + _agre.agreement_cd + " " + _agre.agreement_name + ")";
                 using (var repo = new Repository(@repository))
                 {
                     var remote = repo.Network.Remotes["origin"];
@@ -297,7 +300,7 @@ namespace GitLabManager.Controllers.API
                     Commands.Stage(repo, "*");
 
                     // 本地提交
-                    repo.Commit("main分支初期化", author, author);
+                    repo.Commit(commitMsg, author, author);
 
                     // push认证信息
                     var pushOption = new PushOptions()
