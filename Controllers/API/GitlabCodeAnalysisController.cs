@@ -137,6 +137,16 @@ namespace GitLabManager.Controllers
             var projects = DBCon.db.Projects.Where(p => p.namespace_id == namespace_id);
             return Json(projects);
         }
+
+        [HttpGet]
+        public IHttpActionResult GetMembers()
+        {
+            var users = from u in DBCon.db.Users
+                        join i in DBCon.db.Identities on u.id equals i.user_id
+                        where u.state == "active" && i.provider == "ldapmain"
+                        select new userView { id = u.id,name = u.name,username = u.username,email = u.email };
+            return Json(users);
+        }
     }
 
     public class CommitInfo
@@ -173,5 +183,13 @@ namespace GitLabManager.Controllers
         public int additions { get; set; }
         public int deletions { get; set; }
         public int total { get; set; }
+    }
+
+    public class userView
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string username { get; set; }
+        public string email { get; set; }
     }
 }
