@@ -5,12 +5,11 @@ using System.Linq;
 using System.Configuration;
 using System.Net.Http;
 using GitlabManager.App_Start;
-using System.ComponentModel.DataAnnotations;
 using System;
 using GitLabManager.DataContext;
 using System.Web.Http;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Web;
+using GitLabManager.Models;
 
 namespace GitLabManager.Controllers
 {
@@ -147,6 +146,69 @@ namespace GitLabManager.Controllers
                         select new userView { id = u.id,name = u.name,username = u.username,email = u.email };
             return Json(users);
         }
+
+        [HttpGet]
+        public IHttpActionResult GetDetailWarehouse()
+        {
+            var list = HttpContext.Current.Request.QueryString["idList"].Split(',');
+            string startDate = HttpContext.Current.Request.QueryString["startDate"];
+            string endDate = HttpContext.Current.Request.QueryString["endDate"];
+
+            var history = from h in DBCon.db_agora.CommitHistory
+                          where list.Any(p => p == h.project_id.ToString())
+                          select new CommitView {
+                              commit_id = h.commit_id,
+                              project_id = h.project_id,
+                              project_name = h.project_name,
+                              message = h.message,
+                              additions = h.stats.additions,
+                              deletions = h.stats.deletions,
+                              total = h.stats.total,
+                              committer_id = h.committer_id,
+                              committer_name = h.committer_name,
+                              committer_email = h.committer_email,
+                              committed_date = h.committed_date
+                          };
+
+            if (startDate != null && startDate != "" && endDate != null && endDate != "")
+            {
+                history = history.Where(h => h.committed_date >= Convert.ToDateTime(startDate) && h.committed_date <= Convert.ToDateTime(endDate));
+            }
+            return Json(history);
+        }
+
+        [HttpGet]
+        public IHttpActionResult GetDetailMember()
+        {
+            var users = HttpContext.Current.Request.QueryString["members"].Split(',');
+
+            string startDate = HttpContext.Current.Request.QueryString["startDate"];
+            string endDate = HttpContext.Current.Request.QueryString["endDate"];
+
+            var history = from h in DBCon.db_agora.CommitHistory
+                          where users.Any(p => p == h.committer_id)
+                          select new CommitView
+                          {
+                              commit_id = h.commit_id,
+                              project_id = h.project_id,
+                              project_name = h.project_name,
+                              message = h.message,
+                              additions = h.stats.additions,
+                              deletions = h.stats.deletions,
+                              total = h.stats.total,
+                              committer_id = h.committer_id,
+                              committer_name = h.committer_name,
+                              committer_email = h.committer_email,
+                              committed_date = h.committed_date
+                          };
+
+            if (startDate != null && startDate != "" && endDate != null && endDate != "")
+            {
+                history = history.Where(h => h.committed_date >= Convert.ToDateTime(startDate) && h.committed_date <= Convert.ToDateTime(endDate));
+            }
+            return Json(history);
+        }
+
     }
 
     public class CommitInfo
@@ -159,12 +221,16 @@ namespace GitLabManager.Controllers
         public string name { get; set; }
     }
 
-    [Table("commits_history", Schema = "public")]
-    public class CommitDetail
+    public class userView
     {
-        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public string id { get; set; }
+        public int id { get; set; }
+        public string name { get; set; }
+        public string username { get; set; }
+        public string email { get; set; }
+    }
 
+    public class CommitView
+    {
         public int project_id { get; set; }
         public string project_name { get; set; }
         public string commit_id { get; set; }
@@ -172,24 +238,9 @@ namespace GitLabManager.Controllers
         public string committer_id { get; set; }
         public string committer_name { get; set; }
         public string committer_email { get; set; }
-        public string committed_date { get; set; }
-
-        public stats stats { get; set; }
-        public string sync_time { get; set; }
-    }
-
-    public class stats
-    {
+        public DateTime committed_date { get; set; }
         public int additions { get; set; }
         public int deletions { get; set; }
         public int total { get; set; }
-    }
-
-    public class userView
-    {
-        public int id { get; set; }
-        public string name { get; set; }
-        public string username { get; set; }
-        public string email { get; set; }
     }
 }

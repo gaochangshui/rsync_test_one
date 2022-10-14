@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Web;
 
 namespace GitLabManager.Models
 {
@@ -172,4 +170,29 @@ namespace GitLabManager.Models
         public string avatar { get; set; }
     }
 
+    [Table("commits_history", Schema = "public")]
+    public class CommitDetail
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
+
+        public int project_id { get; set; }
+        public string project_name { get; set; }
+        public string commit_id { get; set; }
+        public string message { get; set; }
+        public string committer_id { get; set; }
+        public string committer_name { get; set; }
+        public string committer_email { get; set; }
+        public DateTime committed_date { get; set; }
+
+        public stats stats { get; set; }
+        public string sync_time { get; set; }
+    }
+
+    public class stats
+    {
+        public int additions { get; set; }
+        public int deletions { get; set; }
+        public int total { get; set; }
+    }
 }
