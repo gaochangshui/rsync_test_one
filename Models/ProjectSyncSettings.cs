@@ -99,6 +99,7 @@ namespace GitLabManager.Models
         public string name { get; set; }
         public string namespace_id { get; set; }
         public string description { get; set; }
+        public DateTime last_activity_at { get; set; }
     }
 
     [Table("namespaces", Schema = "public")]
