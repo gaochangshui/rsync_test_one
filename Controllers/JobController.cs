@@ -61,7 +61,7 @@ namespace GitLabManager.Controllers
                 {
                     if (prodflg == "true")
                     {
-                        GitlabCodeAnalysisController.GetDataRsync();
+                        //GitlabCodeAnalysisController.GetDataRsync();
                     }
                 }
             };

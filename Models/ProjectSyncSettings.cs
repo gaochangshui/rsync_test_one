@@ -186,7 +186,7 @@ namespace GitLabManager.Models
         public DateTime committed_date { get; set; }
 
         public stats stats { get; set; }
-        public string sync_time { get; set; }
+        //public string sync_time { get; set; }
     }
 
     public class stats

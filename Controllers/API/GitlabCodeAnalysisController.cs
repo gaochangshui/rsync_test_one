@@ -5,66 +5,92 @@ using System.Linq;
 using System.Configuration;
 using System.Net.Http;
 using GitlabManager.App_Start;
+using System.Data.Entity;
 using System;
 using GitLabManager.DataContext;
 using System.Web.Http;
 using System.Web;
 using GitLabManager.Models;
+using System.IO;
 
 namespace GitLabManager.Controllers
 {
     public class GitlabCodeAnalysisController : ApiController
     {
         [HttpGet]
-        public static string GetDataRsync()
+        public IHttpActionResult GetDataRsync()
         {
-            var days = ConfigurationManager.AppSettings["RsyncDay"];
+            string folder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
+            Directory.CreateDirectory(folder);
+            string errlog = "";
+            string logFile = folder + "\\commit_log.txt";
+            var sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
 
+            var days = ConfigurationManager.AppSettings["RsyncDay"];
             var api = ConfigurationManager.AppSettings["gitlab_instance"];
             var token = ConfigurationManager.AppSettings["gitlab_token1"];
 
-            var datetime = DateTime.Now.AddDays(Convert.ToInt32(days));
+            var st = Convert.ToDateTime(DateTime.Now.AddDays(Convert.ToInt32(days)).ToShortDateString());
+            var ed = Convert.ToDateTime(DateTime.Now.ToShortDateString());
 
-            var commitList = new List<CommitDetail>();
-            var delList = new List<int>();
-            var projects = DBCon.db.Projects.Where(i => i.last_activity_at > datetime).ToList();
+            sws.WriteLine("start:" + DateTime.Now.ToString());
+            var projects = DBCon.db.Projects.Where(i => i.last_activity_at > st && i.last_activity_at <= ed).OrderBy(i =>i.id).ToList();
+            if (projects == null || projects.Count == 0)
+            {
+                sws.WriteLine("没有提交履历");
+                sws.WriteLine("end:" + DateTime.Now.ToString());
+                sws.Close();
+                return Json(new {success = true});
+            }
+
             var users = DBCon.db.Users.ToList();
-            
+
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", token);
 
-            try
+            var doing = "";
+            foreach (var pj in projects)
             {
-                foreach (var pj in projects)
+                try
                 {
-                    Thread.Sleep(300);
-
+                    Thread.Sleep(200);
+                    doing = pj.id + "_" + pj.name;
                     //分支名取得
                     var response = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/branches").Result;
                     var result = response.Content.ReadAsStringAsync().Result;
                     var commitIdList = new List<CommitInfo>();
+                    var commitList = new List<CommitDetail>();
 
                     try
                     {
-                        var branchList = JsonConvert.DeserializeObject<List<BranchInfo>>(result);
-                        foreach (var b in branchList)
+                        if (response.StatusCode.ToString() == "OK")
                         {
-                            //代码提交ID
-                            response = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/commits?ref_name=" + b.name).Result;
-                            result = response.Content.ReadAsStringAsync().Result;
-                            var commits = JsonConvert.DeserializeObject<List<CommitInfo>>(result);
-                            foreach (var c in commits)
+                            var branchList = JsonConvert.DeserializeObject<List<BranchInfo>>(result);
+                            foreach (var b in branchList)
                             {
-                                commitIdList.Add(new CommitInfo { Id = c.Id });
+                                //代码提交ID
+                                response = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/commits?ref_name=" + b.name).Result;
+                                result = response.Content.ReadAsStringAsync().Result;
+                                var commits = JsonConvert.DeserializeObject<List<CommitInfo>>(result);
+                                foreach (var c in commits)
+                                {
+                                    commitIdList.Add(new CommitInfo { Id = c.Id });
+                                }
                             }
                         }
                     }
-                    catch(Exception ex)
+                    catch
                     {
-                        return ex.StackTrace + ";" +ex.Message;
+                        continue;
                     }
+
                     // 课题别所有提交ID取得
                     var commitAll = commitIdList.Where((x, i) => commitIdList.FindIndex(s => s.Id == x.Id) == i).ToList();
+
+                    if (commitAll == null || commitAll.Count == 0)
+                    {
+                        continue;
+                    }
 
                     // 代码提交履历取得
                     foreach (var c in commitAll)
@@ -81,10 +107,11 @@ namespace GitLabManager.Controllers
                         {
                             try
                             {
-                                var user = users.Where(i => i.email == commitDetail.committer_email).First();
+                                var user = users.Where(i => i.email == commitDetail.committer_email).FirstOrDefault();
                                 if (user != null)
                                 {
                                     commitDetail.committer_id = user.username;
+                                    commitDetail.committer_name = user.name;
                                 }
                             }
                             catch
@@ -100,33 +127,57 @@ namespace GitLabManager.Controllers
                         commitDetail.id = null;
                         commitList.Add(commitDetail);
                     }
-                }
 
-                foreach(var p in projects)
+                    var history = DBCon.db_agora.CommitHistory.Where(c => c.project_id == pj.id);
+
+                    //旧的数据删除
+                    if (history != null && history.Count() > 0)
+                    {
+                        DBCon.db_agora.CommitHistory.RemoveRange(history);
+                    }
+
+                    // 添加新的数据
+                    DBCon.db_agora.CommitHistory.AddRange(commitList);
+                    DBCon.db_agora.SaveChanges();
+                }
+                catch(Exception ex)
                 {
-                    delList.Add(p.id);
+                    errlog = pj.name + ";" + ex.StackTrace + ex.Message + ";\n" ;
+                    sws.WriteLine(errlog);
+                    continue;
                 }
-
-                var history = from h in DBCon.db_agora.CommitHistory
-                              where delList.Any(p => p == h.project_id)
-                              select h;
-
-                //旧的数据删除
-                if( history != null && history.Count() > 0)
-                {
-                    DBCon.db_agora.CommitHistory.RemoveRange(history);
-                }
-
-                // 添加新的数据
-                DBCon.db_agora.CommitHistory.AddRange(commitList);
-                DBCon.db_agora.SaveChanges();
             }
+
+            sws.WriteLine("total:" + projects.Count.ToString() + ",max：" + projects[projects.Count - 1].id + ";using:" + doing);
+            sws.WriteLine("end:" + DateTime.Now.ToString());
+            sws.Close();
+            return Json(new { success = true });
+        }
+
+        [HttpGet]
+        public IHttpActionResult UpdateDataRsync()
+        {
+            try
+            {
+                var users = DBCon.db.Users.ToList();
+                var historys = DBCon.db_agora.CommitHistory.ToList();
+                foreach (var h in historys)
+                {
+                    var uname = users.Where(u => u.username == h.committer_id).FirstOrDefault();
+                    if (uname != null)
+                    {
+                        h.committer_name = uname.name;
+                    }
+                    DBCon.db_agora.Entry(h).State = EntityState.Modified;
+                }
+                DBCon.db_agora.SaveChanges();
+            } 
             catch(Exception ex)
             {
-                return ex.StackTrace + ";" + ex.Message;
+                return Json(new { success = ex.StackTrace + ex.Message });
             }
 
-            return "Rsync success!";
+            return Json(new { success = "true"});
         }
 
         [HttpGet]
@@ -172,7 +223,9 @@ namespace GitLabManager.Controllers
 
             if (startDate != null && startDate != "" && endDate != null && endDate != "")
             {
-                history = history.Where(h => h.committed_date >= Convert.ToDateTime(startDate) && h.committed_date <= Convert.ToDateTime(endDate));
+                var st = Convert.ToDateTime(startDate);
+                var ed = Convert.ToDateTime(endDate);
+                history = history.Where(h => h.committed_date >= st && h.committed_date <= ed);
             }
 
             // 图像数据做成
@@ -203,20 +256,22 @@ namespace GitLabManager.Controllers
                         total = g.Sum(i => i.total)
                     } ;
 
-            var projectID = (from s in sumData select new { s.project_id, s.project_name }).Distinct().OrderBy(i =>i.project_id);
-            var committedDate = (from s in sumData select new { s.committed_date_id, s.committed_date }).Distinct().OrderBy(i => i.committed_date_id).Select(c =>c.committed_date);
+            var projectID = (from s in sumData select new { s.project_id, s.project_name }).Distinct().OrderBy(i =>i.project_id).ToList();
+            var committedDate = (from s in sumData select new { s.committed_date_id, s.committed_date }).Distinct().OrderBy(i => i.committed_date_id).Select(c =>c.committed_date).ToList();
 
             var graphList = new List<GraphView>();
 
             foreach (var p in projectID)
             {
-                var dataTotal= new List<int>();
+                var dataTotal = new List<int>();
                 var dataAdditions = new List<int>();
                 var dataDeletions = new List<int>();
-                var dataList = sumData.Where(s => s.project_id == p.project_id);
+
+                var dataList = sumData.Where(s => s.project_id == p.project_id).ToList();
+
                 foreach (var d in committedDate)
                 {
-                    var result = dataList.Where(s => s.committed_date == d).First();
+                    var result = dataList.Where(s => s.committed_date == d).FirstOrDefault();
                     if (result != null)
                     {
                         dataTotal.Add(result.total);
@@ -278,7 +333,9 @@ namespace GitLabManager.Controllers
 
             if (startDate != null && startDate != "" && endDate != null && endDate != "")
             {
-                history = history.Where(h => h.committed_date >= Convert.ToDateTime(startDate) && h.committed_date <= Convert.ToDateTime(endDate));
+                var st = Convert.ToDateTime(startDate);
+                var ed = Convert.ToDateTime(endDate);
+                history = history.Where(h => h.committed_date >= st && h.committed_date <= ed);
             }
 
             // 图像数据做成
@@ -290,11 +347,11 @@ namespace GitLabManager.Controllers
                     committer_id = h.committer_id,
                     committer_name = h.committer_name,
                     committed_date = h.committed_date.ToShortDateString(),
-                    committed_date_id = h.committed_date.ToString("yyyymmdd"),
+                    committed_date_id = h.committed_date.ToString("yyyyMMdd"),
                     additions = h.additions,
                     deletions = h.deletions,
                     total = h.total
-                }); ; ; ;
+                });
             }
 
             var sumData = from s in memberData
@@ -323,7 +380,7 @@ namespace GitLabManager.Controllers
                 var dataList = sumData.Where(s => s.committer_id == p.committer_id);
                 foreach (var d in committedDate)
                 {
-                    var result = dataList.Where(s => s.committed_date == d).First();
+                    var result = dataList.Where(s => s.committed_date == d).FirstOrDefault();
                     if (result != null)
                     {
                         dataTotal.Add(result.total);
@@ -368,6 +425,7 @@ namespace GitLabManager.Controllers
     public class BranchInfo
     {
         public string name { get; set; }
+        public string message { get; set; }
     }
 
     public class userView
