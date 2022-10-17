@@ -223,9 +223,9 @@ namespace GitLabManager.Controllers
 
             if (startDate != null && startDate != "" && endDate != null && endDate != "")
             {
-                var st = Convert.ToDateTime(startDate);
-                var ed = Convert.ToDateTime(endDate);
-                history = history.Where(h => h.committed_date >= st && h.committed_date <= ed);
+                var st = Convert.ToInt32(startDate.Replace("-","").Replace(" ",""));
+                var ed = Convert.ToInt32(endDate.Replace("-", "").Replace(" ", ""));
+                history = history.Where(h => h.committed_date2 >= st && h.committed_date2 <= ed);
             }
 
             // 图像数据做成
@@ -236,8 +236,8 @@ namespace GitLabManager.Controllers
                 {
                     project_id = h.project_id,
                     project_name = h.project_name,
-                    committed_date = h.committed_date.ToShortDateString(),
-                    committed_date_id = h.committed_date.ToString("yyyyMMdd"),
+                    committed_date = h.committed_date.Substring(0,10),
+                    committed_date_id = h.committed_date.Substring(0, 10).Replace("-","").Replace(" ",""),
                     additions = h.additions,
                     deletions =h.deletions,
                     total =h.total
@@ -333,9 +333,9 @@ namespace GitLabManager.Controllers
 
             if (startDate != null && startDate != "" && endDate != null && endDate != "")
             {
-                var st = Convert.ToDateTime(startDate);
-                var ed = Convert.ToDateTime(endDate);
-                history = history.Where(h => h.committed_date >= st && h.committed_date <= ed);
+                var st = Convert.ToInt32(startDate.Replace("-", "").Replace(" ", ""));
+                var ed = Convert.ToInt32(endDate.Replace("-", "").Replace(" ", ""));
+                history = history.Where(h => h.committed_date2 >= st && h.committed_date2 <= ed);
             }
 
             // 图像数据做成
@@ -346,8 +346,8 @@ namespace GitLabManager.Controllers
                 {
                     committer_id = h.committer_id,
                     committer_name = h.committer_name,
-                    committed_date = h.committed_date.ToShortDateString(),
-                    committed_date_id = h.committed_date.ToString("yyyyMMdd"),
+                    committed_date = h.committed_date.Substring(0,10),
+                    committed_date_id = h.committed_date.Substring(0, 10).Replace("-","").Replace(" ",""),
                     additions = h.additions,
                     deletions = h.deletions,
                     total = h.total
@@ -445,10 +445,11 @@ namespace GitLabManager.Controllers
         public string committer_id { get; set; }
         public string committer_name { get; set; }
         public string committer_email { get; set; }
-        public DateTime committed_date { get; set; }
+        public string committed_date { get; set; }
         public int additions { get; set; }
         public int deletions { get; set; }
         public int total { get; set; }
+        public int committed_date2 { get; set; }
     }
 
     public class WareSumView

@@ -183,7 +183,7 @@ namespace GitLabManager.Models
         public string committer_id { get; set; }
         public string committer_name { get; set; }
         public string committer_email { get; set; }
-        public DateTime committed_date { get; set; }
+        public string committed_date { get; set; }
 
         public stats stats { get; set; }
         //public string sync_time { get; set; }
