@@ -17,8 +17,7 @@ namespace GitLabManager.Controllers
 {
     public class GitlabCodeAnalysisController : ApiController
     {
-        [HttpGet]
-        public IHttpActionResult GetDataRsync()
+        public static void GetDataRsync()
         {
             string folder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
             Directory.CreateDirectory(folder);
@@ -40,9 +39,8 @@ namespace GitLabManager.Controllers
                 sws.WriteLine("没有提交履历");
                 sws.WriteLine("end:" + DateTime.Now.ToString());
                 sws.Close();
-                return Json(new {success = true});
+                return ;
             }
-
             var users = DBCon.db.Users.ToList();
 
             HttpClient httpClient = new HttpClient();
@@ -151,7 +149,7 @@ namespace GitLabManager.Controllers
             sws.WriteLine("total:" + projects.Count.ToString() + ",max：" + projects[projects.Count - 1].id + ";using:" + doing);
             sws.WriteLine("end:" + DateTime.Now.ToString());
             sws.Close();
-            return Json(new { success = true });
+            return ;
         }
 
         [HttpGet]
