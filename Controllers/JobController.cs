@@ -57,7 +57,7 @@ namespace GitLabManager.Controllers
                 }
 
                 // 代码提交履历数据做成
-                if (dt.Hour == 8 && dt.Minute == 15)
+                if (dt.Hour == 7 && dt.Minute == 15)
                 {
                     if (prodflg == "true")
                     {
