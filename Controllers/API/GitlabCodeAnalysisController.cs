@@ -13,6 +13,7 @@ using System.Web;
 using GitLabManager.Models;
 using System.IO;
 using static ICSharpCode.SharpZipLib.Zip.ExtendedUnixData;
+using GetUserAvatar.Models;
 
 namespace GitLabManager.Controllers
 {
@@ -175,43 +176,114 @@ namespace GitLabManager.Controllers
             return Json(users);
         }
 
-        [HttpGet]
-        public IHttpActionResult GetDetailWarehouse()
+        private List<userView> GetMembersAvatarUrl()
         {
-            var list = HttpContext.Current.Request.QueryString["idList"].Split(',');
-            string startDate = HttpContext.Current.Request.QueryString["startDate"];
-            string endDate = HttpContext.Current.Request.QueryString["endDate"];
+            string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
+            string persionFace = ConfigurationManager.AppSettings["persion_face"].Replace("match(gitlab_url)", gitlabUrl);
+            string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
 
-            var history = from h in DBCon.db_agora.CommitHistory
-                where list.Any(p => p == h.project_id.ToString())
-                select new CommitView {
-                    commit_id = h.commit_id,
-                    project_id = h.project_id,
-                    project_name = h.project_name,
-                    additions = h.stats.additions,
-                    deletions = h.stats.deletions,
-                    committer_id = h.committer_id,
-                    committer_name = h.committer_name,
-                    committer_email = h.committer_email,
-                    committed_date = h.committed_date
-                };
-            var flag = false;
-            if (startDate != null && startDate != "" && endDate != null && endDate != "")
+            var users = (from u in DBCon.db.Users
+                        join i in DBCon.db.Identities on u.id equals i.user_id
+                        where u.state == "active" && i.provider == "ldapmain"
+                        select new userView { username = u.username,url = u.avatar,id = u.id}).ToList();
+
+            foreach(var user in users)
             {
-                var st = Convert.ToInt32(startDate.Replace("-","").Replace(" ",""));
-                var ed = Convert.ToInt32(endDate.Replace("-", "").Replace(" ", ""));
-                flag = true;
-                history = history.Where(h => h.committed_date2 >= st && h.committed_date2 <= ed);
+                if (user.url == null || user.url == "")
+                {
+                    user.url = defaultFace;
+                }
+                else
+                {
+                    user.url = persionFace + user.id + "/" + user.url;
+                }
+            }
+            return users;
+        }
+
+        private List<ProjectUrls> ProjectURL(List<ProjectUrls> projects)
+        {
+            try
+            {
+                HttpClient httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
+                HttpContent httpContent = new FormUrlEncodedContent(
+                new List<KeyValuePair<string, string>> {
+                        new KeyValuePair<string, string>("preferred_language", "zh_CN")
+                });
+
+                foreach (var p in projects)
+                {
+                    var response = httpClient.GetAsync(ConfigurationManager.AppSettings["gitlab_instance"] + "projects/" + p.project_id).Result;
+                    var result = response.Content.ReadAsStringAsync().Result;
+                    SingleProject r = JsonConvert.DeserializeObject<SingleProject>(result);
+                    p.Url = r.web_url;
+                }
+
+                return projects;
+            }
+            catch
+            {
+                return null;
             }
 
+        }
+
+        [HttpGet]
+        public IHttpActionResult GetGraphData()
+        {
+            var list = HttpContext.Current.Request.QueryString["idList"].Split(',');
+            var flag = HttpContext.Current.Request.QueryString["flag"];
+
+            var users = GetMembersAvatarUrl();
+            var history = new List<CommitView>();
+
+            if (flag == "p")
+            {
+                history = (from h in DBCon.db_agora.CommitHistory
+                           where list.Any(p => p == h.project_id.ToString())
+                           select new CommitView
+                           {
+                               commit_id = h.commit_id,
+                               project_id = h.project_id,
+                               project_name = h.project_name,
+                               additions = h.stats.additions,
+                               deletions = h.stats.deletions,
+                               committer_id = h.committer_id,
+                               committer_name = h.committer_name,
+                               committer_email = h.committer_email,
+                               committed_date = h.committed_date
+                           }).ToList();
+
+            }
+            else
+            {
+                history = (from h in DBCon.db_agora.CommitHistory
+                           where list.Any(p => p == h.committer_id)
+                           select new CommitView
+                           {
+                               commit_id = h.commit_id,
+                               project_id = h.project_id,
+                               project_name = h.project_name,
+                               additions = h.stats.additions,
+                               deletions = h.stats.deletions,
+                               committer_id = h.committer_id,
+                               committer_name = h.committer_name,
+                               committer_email = h.committer_email,
+                               committed_date = h.committed_date
+                           }).ToList();
+            }
+
+
             // 图像数据做成
-            var wareData = new List<WareSumView>();
+            var wareData = new List<SumView>();
             foreach(var h in history)
             {
-                wareData.Add(new WareSumView
+                wareData.Add(new SumView
                 {
                     project_id = h.project_id,
-                    commit_id = h.commit_id,
+                    committer_id = h.committer_id,
+                    committer_name=h.committer_name,
                     project_name = h.project_name,
                     committed_date = h.committed_date.Substring(0,10),
                     committed_date_id = h.committed_date.Substring(0, 10).Replace("-","").Replace(" ",""),
@@ -222,25 +294,82 @@ namespace GitLabManager.Controllers
 
            var sumData = from s in wareData
                 group s by new { s.project_id,s.project_name,s.committed_date ,s.committed_date_id} into g
-                    select new { 
-                        g.Key.project_id,
-                        g.Key.project_name,
-                        g.Key.committed_date_id,
-                        g.Key.committed_date,
-                        additions = g.Sum(i => i.additions),
-                        deletions = g.Sum(i => i.deletions),
-                        counts = g.Count()
-                    } ;
+                select new { 
+                    g.Key.project_id,
+                    g.Key.project_name,
+                    g.Key.committed_date_id,
+                    g.Key.committed_date,
+                    additions = g.Sum(i => i.additions),
+                    deletions = g.Sum(i => i.deletions),
+                    counts = g.Count()
+                } ;
 
-            var projectID = (from s in sumData select new { s.project_id, s.project_name }).Distinct().OrderBy(i =>i.project_id).ToList();
+            var sumDataUser = from s in wareData
+                group s by new { s.committer_id, s.committer_name, s.committed_date, s.committed_date_id } into g
+                select new
+                {
+                    g.Key.committer_id,
+                    g.Key.committer_name,
+                    g.Key.committed_date_id,
+                    g.Key.committed_date,
+                    additions = g.Sum(i => i.additions),
+                    deletions = g.Sum(i => i.deletions),
+                    counts = g.Count()
+                };
 
+            var projects = (from s in sumData select new ProjectUrls { project_id = s.project_id, project_name = s.project_name }).Distinct().OrderBy(i =>i.project_id).ToList();
+            var userInfo = (from s in sumDataUser select new { s.committer_id, s.committer_name }).Distinct().OrderBy(i => i.committer_id).ToList();
             var committedDate = (from s in sumData select new { s.committed_date_id, s.committed_date }).Distinct().OrderBy(i => i.committed_date_id).Select(c =>c.committed_date).ToList();
 
-            committedDate = DateConvert(committedDate, startDate, endDate, flag);
+            var urlProject = ProjectURL(projects);
+
+            committedDate = DateConvert(committedDate);
 
             var graphList = new List<GraphView>();
+            var graphUserList = new List<GraphView>();
 
-            foreach (var p in projectID)
+            foreach (var u in userInfo)
+            {
+                var dataCounts = new List<int>();
+                var dataAdditions = new List<int>();
+                var dataDeletions = new List<int>();
+
+                var dataList = sumDataUser.Where(s => s.committer_id == u.committer_id).ToList();
+
+                foreach (var d in committedDate)
+                {
+                    var result = dataList.Where(s => s.committed_date == d).FirstOrDefault();
+                    if (result != null)
+                    {
+                        dataCounts.Add(result.counts);
+                        dataAdditions.Add(result.additions);
+                        dataDeletions.Add(result.deletions);
+                    }
+                    else
+                    {
+                        dataCounts.Add(0);
+                        dataAdditions.Add(0);
+                        dataDeletions.Add(0);
+                    }
+                }
+
+                var url = users.Where(i => i.username == u.committer_id).Select(i =>i.url).FirstOrDefault();
+
+                graphUserList.Add(new GraphView
+                {
+                    name = u.committer_name,
+                    url = url,
+                    type = "line",
+                    cntTotal = dataCounts.Sum(),
+                    countData = dataCounts,
+                    addTotal = dataAdditions.Sum(),
+                    additionsData = dataAdditions,
+                    delTotal = dataDeletions.Sum(),
+                    deletionsData = dataDeletions,
+                });
+            }
+
+            foreach (var p in projects)
             {
                 var dataCounts = new List<int>();
                 var dataAdditions = new List<int>();
@@ -268,148 +397,26 @@ namespace GitLabManager.Controllers
                 graphList.Add(new GraphView
                 {
                     name = p.project_name,
+                    url = p.Url,
                     type = "line",
-                    countTitle = "Commit Counts",
+                    cntTotal = dataCounts.Sum(),
                     countData = dataCounts,
-                    additionsTitle = "Code Additions",
+                    addTotal = dataAdditions.Sum(),
                     additionsData = dataAdditions,
-                    deletionsTitle = "Code Deletions",
+                    delTotal = dataDeletions.Sum(),
                     deletionsData = dataDeletions,
                 });
             }
 
-            return Json(new
-            {
-                graphData = new { date = committedDate, data = graphList },
-                detailData = history
-            });
+            return Json( new { date = committedDate, dataProject = graphList, dataUser = graphUserList });
         }
 
-        [HttpGet]
-        public IHttpActionResult GetDetailMember()
+        private List<string> DateConvert(List<string> commit_date)
         {
-            var users = HttpContext.Current.Request.QueryString["members"].Split(',');
 
-            string startDate = HttpContext.Current.Request.QueryString["startDate"];
-            string endDate = HttpContext.Current.Request.QueryString["endDate"];
+            var s = Convert.ToDateTime(commit_date.Min());
+            var e = Convert.ToDateTime(commit_date.Max());
 
-            var history = from h in DBCon.db_agora.CommitHistory
-                where users.Any(p => p == h.committer_id)
-                select new CommitView
-                {
-                    commit_id = h.commit_id,
-                    project_id = h.project_id,
-                    project_name = h.project_name,
-                    additions = h.stats.additions,
-                    deletions = h.stats.deletions,
-                    committer_id = h.committer_id,
-                    committer_name = h.committer_name,
-                    committer_email = h.committer_email,
-                    committed_date = h.committed_date
-                };
-
-            var flag = false;
-            if (startDate != null && startDate != "" && endDate != null && endDate != "")
-            {
-                var st = Convert.ToInt32(startDate.Replace("-", "").Replace(" ", ""));
-                var ed = Convert.ToInt32(endDate.Replace("-", "").Replace(" ", ""));
-                flag = true;
-                history = history.Where(h => h.committed_date2 >= st && h.committed_date2 <= ed);
-            }
-
-            // 图像数据做成
-            var memberData = new List<MemberSumView>();
-            foreach (var h in history)
-            {
-                memberData.Add(new MemberSumView
-                {
-                    committer_id = h.committer_id,
-                    commit_id = h.committer_id,
-                    committer_name = h.committer_name,
-                    committed_date = h.committed_date.Substring(0,10),
-                    committed_date_id = h.committed_date.Substring(0, 10).Replace("-","").Replace(" ",""),
-                    additions = h.additions,
-                    deletions = h.deletions
-                });
-            }
-
-            var sumData = from s in memberData
-                group s by new { s.committer_id, s.committer_name, s.committed_date,s.committed_date_id } into g
-                select new
-                {
-                    g.Key.committer_id,
-                    g.Key.committer_name,
-                    g.Key.committed_date,
-                    g.Key.committed_date_id,
-                    additions = g.Sum(i => i.additions),
-                    deletions = g.Sum(i => i.deletions),
-                    counts = g.Count()
-                };
-
-            var memberID = (from s in sumData select new { s.committer_id, s.committer_name }).Distinct();
-            var committedDate = (from s in sumData select new { s.committed_date_id, s.committed_date }).Distinct().OrderBy(i => i.committed_date_id).Select(c => c.committed_date).ToList();
-            committedDate = DateConvert(committedDate, startDate, endDate, flag);
-
-            var graphList = new List<GraphView>();
-
-            foreach (var p in memberID)
-            {
-                var dataCounts = new List<int>();
-                var dataAdditions = new List<int>();
-                var dataDeletions = new List<int>();
-                var dataList = sumData.Where(s => s.committer_id == p.committer_id);
-                foreach (var d in committedDate)
-                {
-                    var result = dataList.Where(s => s.committed_date == d).FirstOrDefault();
-                    if (result != null)
-                    {
-                        dataCounts.Add(result.counts);
-                        dataAdditions.Add(result.additions);
-                        dataDeletions.Add(result.deletions);
-                    }
-                    else
-                    {
-                        dataCounts.Add(0);
-                        dataAdditions.Add(0);
-                        dataDeletions.Add(0);
-                    }
-                }
-
-                graphList.Add(new GraphView
-                {
-                    name = p.committer_name,
-                    type = "line",
-                    countTitle = "Commit Counts",
-                    countData = dataCounts,
-                    additionsTitle = "Code Additions",
-                    additionsData = dataAdditions,
-                    deletionsTitle = "Code Deletions",
-                    deletionsData = dataDeletions,
-                });
-            }
-
-            return Json(new
-            {
-                graphData = new { date = committedDate, data = graphList },
-                detailData = history
-            });
-        }
-
-        private List<string> DateConvert(List<string> commit_date,string st,string ed ,bool flag)
-        {
-            var s = new DateTime();
-            var e = new DateTime();
-
-            if (flag == true)
-            { 
-                s = Convert.ToDateTime(st);
-                e = Convert.ToDateTime(ed);
-            }
-            else
-            {
-                s = Convert.ToDateTime(commit_date.Min());
-                e = Convert.ToDateTime(commit_date.Max());
-            }
 
             var days = DateDiff(s,e);
             var dateList = new List<string>();
@@ -438,6 +445,13 @@ namespace GitLabManager.Controllers
         public string Id { get; set; }
     }
 
+    public class ProjectUrls
+    {
+        public int project_id { get; set; }
+        public string project_name { get; set; }
+        public string Url { get; set; }
+    }
+
     public class BranchInfo
     {
         public string name { get; set; }
@@ -450,6 +464,7 @@ namespace GitLabManager.Controllers
         public string name { get; set; }
         public string username { get; set; }
         public string email { get; set; }
+        public string url { get; set; }
     }
 
     public class CommitView
@@ -467,39 +482,34 @@ namespace GitLabManager.Controllers
         public int committed_date2 { get; set; }
     }
 
-    public class WareSumView
+    public class SumView
     {
         public int project_id { get; set; }
         public string project_name { get; set; }
         public string committed_date { get; set; }
         public string committed_date_id { get; set; }
-        public string commit_id { get; set; }
+        public string committer_id { get; set; }
+        public string committer_name { get; set; }
         public int additions { get; set; }
         public int deletions { get; set; }
         public int count { get; set; }
     }
 
-    public class MemberSumView
-    {
-        public string committer_id { get; set; }
-        public string committer_name { get; set; }
-        public string committed_date { get; set; }
-        public string committed_date_id { get; set; }
-        public string commit_id { get; set; }
-        public int additions { get; set; }
-        public int deletions { get; set; }
-        public int count { get; set; }
-    }
 
     public class GraphView
     {
         public string name { get; set; }
+        public string url { get; set; }
         public string type  { get; set; }
-        public string countTitle { get; set; }
+
         public List<int> countData { get; set; }
-        public string additionsTitle { get; set; }
+
         public List<int> additionsData { get; set; }
-        public string deletionsTitle { get; set; }
+
         public List<int> deletionsData { get; set; }
+
+        public int cntTotal { get; set; }
+        public int addTotal { get; set; }
+        public int delTotal { get; set; }
     }
 }
