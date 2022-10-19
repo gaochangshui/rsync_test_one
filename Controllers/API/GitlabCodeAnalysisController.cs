@@ -226,7 +226,6 @@ namespace GitLabManager.Controllers
             {
                 return null;
             }
-
         }
 
         [HttpGet]
@@ -413,10 +412,8 @@ namespace GitLabManager.Controllers
 
         private List<string> DateConvert(List<string> commit_date)
         {
-
             var s = Convert.ToDateTime(commit_date.Min());
             var e = Convert.ToDateTime(commit_date.Max());
-
 
             var days = DateDiff(s,e);
             var dateList = new List<string>();
