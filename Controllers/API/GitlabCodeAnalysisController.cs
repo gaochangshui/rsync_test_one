@@ -12,7 +12,6 @@ using System.Web.Http;
 using System.Web;
 using GitLabManager.Models;
 using System.IO;
-using static ICSharpCode.SharpZipLib.Zip.ExtendedUnixData;
 using GetUserAvatar.Models;
 
 namespace GitLabManager.Controllers
@@ -316,7 +315,7 @@ namespace GitLabManager.Controllers
                     counts = g.Count()
                 };
 
-            var projects = (from s in sumData select new ProjectUrls { project_id = s.project_id, project_name = s.project_name }).Distinct().OrderBy(i =>i.project_id).ToList();
+            var projects = (from s in sumData group s by new { s.project_id , s.project_name } into g select new ProjectUrls { project_id = g.Key.project_id, project_name = g.Key.project_name }).ToList();
             var userInfo = (from s in sumDataUser select new { s.committer_id, s.committer_name }).Distinct().OrderBy(i => i.committer_id).ToList();
             var committedDate = (from s in sumData select new { s.committed_date_id, s.committed_date }).Distinct().OrderBy(i => i.committed_date_id).Select(c =>c.committed_date).ToList();
 
@@ -356,6 +355,7 @@ namespace GitLabManager.Controllers
 
                 graphUserList.Add(new GraphView
                 {
+                    id = u.committer_id,
                     name = u.committer_name,
                     url = url,
                     type = "line",
@@ -397,6 +397,7 @@ namespace GitLabManager.Controllers
                 {
                     name = p.project_name,
                     url = p.Url,
+                    id = p.project_id.ToString(),
                     type = "line",
                     cntTotal = dataCounts.Sum(),
                     countData = dataCounts,
@@ -496,6 +497,7 @@ namespace GitLabManager.Controllers
     public class GraphView
     {
         public string name { get; set; }
+        public string id { get; set; }
         public string url { get; set; }
         public string type  { get; set; }
 
