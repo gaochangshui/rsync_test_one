@@ -12,6 +12,7 @@ using System.Configuration;
 using Newtonsoft.Json;
 using LibGit2Sharp;
 using System.IO;
+using System.Web;
 
 namespace GitLabManager.Controllers.API
 {
@@ -27,9 +28,11 @@ namespace GitLabManager.Controllers.API
         {
             try
             {
+                var flag = HttpContext.Current.Request.QueryString["flag"];
+
                 // 有效的所有群组
                 var allGroups = DBCon.db.NameSpaces.Where(i => i.type == "Group" && i.id != 2 && i.id != 10 && i.id != 15).ToList();
-
+                var projects = DBCon.db.Projects.ToList();
                 // 顶级群组
                 var rootGroup = allGroups.Where(i => i.parent_id == null).ToList();
 
@@ -49,7 +52,15 @@ namespace GitLabManager.Controllers.API
 
                     // 子节点组数据取得
                     resultJson += StringJson("body_start", ns.id.ToString(), ns.name);
-                    resultJson = ChildrenData(rootGroup[i], allGroups, resultJson);
+                    if (flag != null && flag != "" && flag == "pj")
+                    {
+                        var subPj = GetProjectsList(ns.id, projects);
+                        if (subPj != "")
+                        {
+                            resultJson += subPj + "," ;
+                        }
+                    }
+                    resultJson = ChildrenData(rootGroup[i], allGroups, resultJson, projects, flag);
 
                     if (i != rootGroup.Count - 1)
                     {
@@ -158,6 +169,26 @@ namespace GitLabManager.Controllers.API
             }
         }
        
+        private string GetProjectsList(int nsId,List<Projects> projects)
+        {
+            string result = "";
+            var pj = (from p in projects where p.namespace_id == nsId.ToString() select new {p.id,p.name}).ToList() ;
+            if (pj != null && pj.Count > 0)
+            {
+                for (var i = 0; i < pj.Count; i++)
+                {
+                    result += "{\"value\": \"" + pj[i].id + "\",\"label\": \"" + pj[i].name + "\"}";
+
+                    if (i < pj.Count - 1)
+                    {
+                        result += ",";
+                    }
+                }
+            }
+
+            return result;
+        }
+
         private void SetQcdProject(WHCreateReq req,ReturnResult rr)
         {
             // 根据id检索出既存信息
@@ -318,7 +349,6 @@ namespace GitLabManager.Controllers.API
             {
                 return false;
             }
-
         }
 
         private bool PushOrtherBranch(string token, string repository,string branchType)
@@ -420,11 +450,15 @@ namespace GitLabManager.Controllers.API
             }
         }
 
-        private string ChildrenData(Models.NameSpaces ns, List<Models.NameSpaces> allGroups, string resultJson)
+        private string ChildrenData(Models.NameSpaces ns, List<Models.NameSpaces> allGroups, string resultJson,List<Projects> projects,string flag)
         {
             var subGroup = allGroups.Where(i => i.parent_id == ns.id.ToString()).ToList();
             if (subGroup == null || subGroup.Count == 0)
             {
+                if (flag != null && flag != "" && flag == "pj")
+                {
+                    resultJson += GetProjectsList(ns.id, projects);
+                }
                 resultJson += StringJson("body_end");
             }
             else
@@ -432,13 +466,21 @@ namespace GitLabManager.Controllers.API
                 for (var i = 0; i < subGroup.Count; i++)
                 {
                     resultJson += StringJson("body_start", subGroup[i].id.ToString(), subGroup[i].name);
-                    resultJson = ChildrenData(subGroup[i], allGroups, resultJson);
+                    resultJson = ChildrenData(subGroup[i], allGroups, resultJson, projects, flag);
                     if (i != subGroup.Count - 1)
                     {
                         resultJson += StringJson("comma");
                     }
                     else
                     {
+                        if (flag != null && flag != "" && flag == "pj")
+                        {
+                            var subPj = GetProjectsList(subGroup[i].id, projects);
+                            if (subPj !="")
+                            {
+                                resultJson += "," + subPj;
+                            }
+                        }
                         resultJson += StringJson("body_end");
                     }
                 }

@@ -232,6 +232,8 @@ namespace GitLabManager.Controllers
         {
             var list = HttpContext.Current.Request.QueryString["idList"].Split(',');
             var flag = HttpContext.Current.Request.QueryString["flag"];
+            string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
+            string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
 
             var users = GetMembersAvatarUrl();
             var history = new List<CommitView>();
@@ -353,6 +355,10 @@ namespace GitLabManager.Controllers
 
                 var url = users.Where(i => i.username == u.committer_id).Select(i =>i.url).FirstOrDefault();
 
+                if (url == null || url == "")
+                {
+                    url = defaultFace;
+                }
                 graphUserList.Add(new GraphView
                 {
                     id = u.committer_id,
@@ -373,7 +379,6 @@ namespace GitLabManager.Controllers
                 var dataCounts = new List<int>();
                 var dataAdditions = new List<int>();
                 var dataDeletions = new List<int>();
-
                 var dataList = sumData.Where(s => s.project_id == p.project_id).ToList();
 
                 foreach (var d in committedDate)
@@ -407,7 +412,6 @@ namespace GitLabManager.Controllers
                     deletionsData = dataDeletions,
                 });
             }
-
             return Json( new { date = committedDate, dataProject = graphList, dataUser = graphUserList });
         }
 
@@ -418,14 +422,12 @@ namespace GitLabManager.Controllers
 
             var days = DateDiff(s,e);
             var dateList = new List<string>();
-
             dateList.Add(s.ToString("yyyy-MM-dd"));
 
             for (var i=1; i <= days; i++)
             {
                 dateList.Add(s.AddDays(i).ToString("yyyy-MM-dd"));
             }
-
             return dateList;
         }
 
