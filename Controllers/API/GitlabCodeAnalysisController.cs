@@ -333,8 +333,11 @@ namespace GitLabManager.Controllers
                 var dataCounts = new List<int>();
                 var dataAdditions = new List<int>();
                 var dataDeletions = new List<int>();
-
                 var dataList = sumDataUser.Where(s => s.committer_id == u.committer_id).ToList();
+                if (u.committer_id == null)
+                {
+                    dataList = sumDataUser.Where(s => s.committer_name == u.committer_name).ToList();
+                }
 
                 foreach (var d in committedDate)
                 {
