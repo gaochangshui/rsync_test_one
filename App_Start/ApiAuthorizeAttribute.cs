@@ -88,7 +88,7 @@ namespace GitlabManager.App_Start
                 Success = false,
                 Message = errorMsg
             };
-            actionContext.Response = actionContext.Request.CreateResponse(HttpStatusCode.OK, erModel, "application/json");
+            actionContext.Response = actionContext.Request.CreateResponse(HttpStatusCode.Unauthorized, erModel, "application/json");
         }
     }
 }
