@@ -227,11 +227,12 @@ namespace GitLabManager.Controllers
             }
         }
 
-        [HttpGet]
-        public IHttpActionResult GetGraphData()
-        {
-            var list = HttpContext.Current.Request.QueryString["idList"].Split(',');
-            var flag = HttpContext.Current.Request.QueryString["flag"];
+        [HttpPost]
+        public IHttpActionResult GetGraphData(RequestInput input)
+        { 
+            var list = input.idList;
+            var flag = input.flag;
+
             string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
             string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
 
@@ -439,12 +440,20 @@ namespace GitLabManager.Controllers
             TimeSpan sp = end.Subtract(start);
             return sp.Days;
         }
+
+        public class RequestInput
+        {
+            public List<string> idList { get; set; }
+            public string flag { get; set; }
+        }
     }
 
     public class CommitInfo
     {
         public string Id { get; set; }
     }
+
+
 
     public class ProjectUrls
     {
