@@ -473,14 +473,6 @@ namespace GitLabManager.Controllers.API
                     }
                     else
                     {
-                        if (flag != null && flag != "" && flag == "pj")
-                        {
-                            var subPj = GetProjectsList(subGroup[i].id, projects);
-                            if (subPj !="")
-                            {
-                                resultJson += "," + subPj;
-                            }
-                        }
                         resultJson += StringJson("body_end");
                     }
                 }
