@@ -2,6 +2,7 @@
 using System.Configuration;
 using System.Net;
 using System.Net.Mail;
+using System.IO;
 
 namespace GitLabManager.BLL
 {
@@ -13,9 +14,17 @@ namespace GitLabManager.BLL
 
         public bool SendMail(string from,string to,string cc,string title,string body)
         {
+            string logs = "from:" + from + "\nto:" + to + "\ncc:" + cc + "\ntiltle:" + title + "\nbody:" + body;
+            string folder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
+            Directory.CreateDirectory(folder);
+            string logFile = folder + "\\review_log.txt";
+            var sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
+
+            sws.WriteLine("start:" + DateTime.Now.ToString());
+            sws.WriteLine(logs);
+
             try
             {
-
                 MailMessage message = new MailMessage();
                 //设置发件人,发件人需要与设置的邮件发送服务器的邮箱一致
                 MailAddress fromAddr = new MailAddress(from);
@@ -40,9 +49,16 @@ namespace GitLabManager.BLL
                 client.Send(message);
                 return true;
             }
-            catch
+            catch(Exception ex)
             {
+                sws.WriteLine(ex.Message);
                 return false;
+            }
+            finally
+            {
+                sws.WriteLine("end:" + DateTime.Now.ToString());
+                sws.WriteLine("----------------------------------------------------------");
+                sws.Close();
             }
         }
     }
