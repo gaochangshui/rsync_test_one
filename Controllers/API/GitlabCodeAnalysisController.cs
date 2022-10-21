@@ -233,6 +233,14 @@ namespace GitLabManager.Controllers
             var list = input.idList;
             var flag = input.flag;
 
+            var graphList = new List<GraphView>();
+            var graphUserList = new List<GraphView>();
+
+            if (list == null || list.Count == 0)
+            {
+                return Json(new { date = new List<string>() { }, dataProject = graphList, dataUser = graphUserList });
+            }
+
             string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
             string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
 
@@ -324,8 +332,7 @@ namespace GitLabManager.Controllers
 
             committedDate = DateConvert(committedDate);
 
-            var graphList = new List<GraphView>();
-            var graphUserList = new List<GraphView>();
+
 
             foreach (var u in userInfo)
             {
