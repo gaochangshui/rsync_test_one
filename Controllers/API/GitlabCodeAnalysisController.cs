@@ -237,43 +237,41 @@ namespace GitLabManager.Controllers
 
             var users = GetMembersAvatarUrl();
             var history = new List<CommitView>();
-
+            var commitHistory = DBCon.db_agora.CommitHistory.ToList();
             if (flag == "p")
             {
-                history = (from h in DBCon.db_agora.CommitHistory
-                           where list.Any(p => p == h.project_id.ToString())
-                           select new CommitView
-                           {
-                               commit_id = h.commit_id,
-                               project_id = h.project_id,
-                               project_name = h.project_name,
-                               additions = h.stats.additions,
-                               deletions = h.stats.deletions,
-                               committer_id = h.committer_id,
-                               committer_name = h.committer_name,
-                               committer_email = h.committer_email,
-                               committed_date = h.committed_date
-                           }).ToList();
-
+                history = (from h in commitHistory
+                    where list.Any(p => p == h.project_id.ToString())
+                    select new CommitView
+                    {
+                        commit_id = h.commit_id,
+                        project_id = h.project_id,
+                        project_name = h.project_name,
+                        additions = h.stats.additions,
+                        deletions = h.stats.deletions,
+                        committer_id = h.committer_id,
+                        committer_name = h.committer_name,
+                        committer_email = h.committer_email,
+                        committed_date = h.committed_date
+                    }).ToList();
             }
             else
             {
-                history = (from h in DBCon.db_agora.CommitHistory
-                           where list.Any(p => p == h.committer_id)
-                           select new CommitView
-                           {
-                               commit_id = h.commit_id,
-                               project_id = h.project_id,
-                               project_name = h.project_name,
-                               additions = h.stats.additions,
-                               deletions = h.stats.deletions,
-                               committer_id = h.committer_id,
-                               committer_name = h.committer_name,
-                               committer_email = h.committer_email,
-                               committed_date = h.committed_date
-                           }).ToList();
+                history = (from h in commitHistory
+                    where list.Any(p => p == h.committer_id)
+                    select new CommitView
+                    {
+                        commit_id = h.commit_id,
+                        project_id = h.project_id,
+                        project_name = h.project_name,
+                        additions = h.stats.additions,
+                        deletions = h.stats.deletions,
+                        committer_id = h.committer_id,
+                        committer_name = h.committer_name,
+                        committer_email = h.committer_email,
+                        committed_date = h.committed_date
+                    }).ToList();
             }
-
 
             // 图像数据做成
             var wareData = new List<SumView>();
@@ -321,7 +319,7 @@ namespace GitLabManager.Controllers
             var userInfo = (from s in sumDataUser select new { s.committer_id, s.committer_name }).Distinct().OrderBy(i => i.committer_id).ToList();
             var committedDate = (from s in sumData select new { s.committed_date_id, s.committed_date }).Distinct().OrderBy(i => i.committed_date_id).Select(c =>c.committed_date).ToList();
 
-            var urlProject = ProjectURL(projects);
+            //var urlProject = ProjectURL(projects);
 
             committedDate = DateConvert(committedDate);
 
