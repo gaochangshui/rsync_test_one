@@ -19,7 +19,7 @@ namespace GitLabManager.Controllers
     [ApiAuthorize]
     public class GitlabCodeAnalysisController : ApiController
     {
-        public static void GetDataRsync()
+        public  static void GetDataRsync2()
         {
             string folder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
             Directory.CreateDirectory(folder);
@@ -27,61 +27,109 @@ namespace GitLabManager.Controllers
             string logFile = folder + "\\commit_log.txt";
             var sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
 
-            var days = ConfigurationManager.AppSettings["RsyncDay"];
+            var days = -700;
             var api = ConfigurationManager.AppSettings["gitlab_instance"];
             var token = ConfigurationManager.AppSettings["gitlab_token1"];
 
             var st = Convert.ToDateTime(DateTime.Now.AddDays(Convert.ToInt32(days)).ToShortDateString());
             var ed = Convert.ToDateTime(DateTime.Now.ToShortDateString());
 
-            sws.WriteLine("\n start:" + DateTime.Now.ToString());
-            var projects = DBCon.db.Projects.Where(i => i.last_activity_at > st && i.last_activity_at <= ed).OrderBy(i =>i.id).ToList();
+            sws.WriteLine("start:" + DateTime.Now.ToString());
+            
+            var projects = DBCon.db.Projects.Where(i => i.last_activity_at > st && i.last_activity_at <= ed).OrderBy(i => i.id).ToList();
+
+            var id_his = DBCon.db_agora.CommitHistory.Select(i => i.project_id).Distinct().ToList();
+            foreach (var id in id_his)
+            {
+                var pj = projects.Where(p => p.id == id).FirstOrDefault();
+                projects.Remove(pj);
+            }
+
             if (projects == null || projects.Count == 0)
             {
                 sws.WriteLine("没有提交履历");
                 sws.WriteLine("end:" + DateTime.Now.ToString());
                 sws.Close();
-                return ;
+                return;
             }
             var users = DBCon.db.Users.ToList();
 
             HttpClient httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", token);
+            sws.Close();
 
             var doing = "";
             foreach (var pj in projects)
             {
+                if (pj.id == 1986)
+                {
+                    continue;
+                }
+                sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
+                sws.WriteLine("start:" + pj.name);
                 try
                 {
-                    Thread.Sleep(200);
                     doing = pj.id + "_" + pj.name;
-                    //分支名取得
-                    var response = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/branches").Result;
-                    var result = response.Content.ReadAsStringAsync().Result;
                     var commitIdList = new List<CommitInfo>();
                     var commitList = new List<CommitDetail>();
 
-                    try
+                    //分支名取得
+                    var response = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/branches?per_page=50").Result;
+                    if (response.StatusCode.ToString() != "OK")
                     {
-                        if (response.StatusCode.ToString() == "OK")
+                        sws.WriteLine("end:" + pj.name + "没有分支");
+                        sws.Close();
+                        continue;
+                    }
+
+                    int TotalPages = int.Parse(response.Headers.GetValues("X-Total-Pages").First());
+                    int Page = int.Parse(response.Headers.GetValues("X-Page").First());
+                    while (Page <= TotalPages)
+                    {
+                        response = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/branches?per_page=50&page=" + Page.ToString()).Result;
+                        var result = response.Content.ReadAsStringAsync().Result;
+                        try
                         {
-                            var branchList = JsonConvert.DeserializeObject<List<BranchInfo>>(result);
-                            foreach (var b in branchList)
+                            if (response.StatusCode.ToString() == "OK")
                             {
-                                //代码提交ID
-                                response = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/commits?ref_name=" + b.name).Result;
-                                result = response.Content.ReadAsStringAsync().Result;
-                                var commits = JsonConvert.DeserializeObject<List<CommitInfo>>(result);
-                                foreach (var c in commits)
+                                var branchList = JsonConvert.DeserializeObject<List<BranchInfo>>(result);
+                                foreach (var b in branchList)
                                 {
-                                    commitIdList.Add(new CommitInfo { Id = c.Id });
+                                    // 代码提交ID
+                                    try
+                                    {
+                                        Thread.Sleep(20);
+                                        var responseSub = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/commits?ref_name=" + b.name + "&per_page=9999").Result;
+                                        result = responseSub.Content.ReadAsStringAsync().Result;
+                                        var commits = JsonConvert.DeserializeObject<List<CommitInfo>>(result);
+                                        foreach (var c in commits)
+                                        {
+                                            commitIdList.Add(new CommitInfo { Id = c.Id });
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        sws.WriteLine("bran1:" + pj.name + ex.Message + ex.StackTrace);
+                                        continue;
+                                    }
                                 }
                             }
                         }
-                    }
-                    catch
-                    {
-                        continue;
+                        catch (Exception ex)
+                        {
+                            sws.WriteLine("bran2:" + pj.name + ex.Message + ex.StackTrace);
+                            continue;
+                        }
+
+                        // 分支分页
+                        if (Page < TotalPages)
+                        {
+                            Page = int.Parse(response.Headers.GetValues("X-Next-Page").First());
+                        }
+                        else
+                        {
+                            Page = TotalPages + 1;
+                        }
                     }
 
                     // 课题别所有提交ID取得
@@ -89,6 +137,8 @@ namespace GitLabManager.Controllers
 
                     if (commitAll == null || commitAll.Count == 0)
                     {
+                        sws.WriteLine("end:" + pj.name + "没有分支2");
+                        sws.Close();
                         continue;
                     }
 
@@ -98,7 +148,191 @@ namespace GitLabManager.Controllers
                         var url_sha = api + "projects/" + pj.id + "/repository/commits/" + c.Id;
 
                         response = httpClient.GetAsync(url_sha).Result;
-                        result = response.Content.ReadAsStringAsync().Result;
+                        var result = response.Content.ReadAsStringAsync().Result;
+                        var commitDetail = JsonConvert.DeserializeObject<CommitDetail>(result);
+                        commitDetail.commit_id = commitDetail.id;
+                        commitDetail.project_name = pj.name;
+                        //commitDetail.message = "";
+
+                        if (commitDetail.committer_email != null)
+                        {
+                            try
+                            {
+                                var user = users.Where(i => i.email == commitDetail.committer_email).FirstOrDefault();
+                                if (user != null)
+                                {
+                                    commitDetail.committer_id = user.username;
+                                    commitDetail.committer_name = user.name;
+                                }
+                            }
+                            catch
+                            {
+                                commitDetail.committer_id = commitDetail.committer_name;
+                            }
+                        }
+                        else
+                        {
+                            commitDetail.committer_id = commitDetail.committer_name;
+                        }
+
+                        commitDetail.id = null;
+                        if (commitDetail.stats != null && commitDetail.committed_date != null)
+                        {
+                            commitList.Add(commitDetail);
+                        }
+                    }
+
+                    var history = DBCon.db_agora.CommitHistory.Where(c => c.project_id == pj.id);
+
+                    //旧的数据删除
+                    if (history != null && history.Count() > 0)
+                    {
+                        DBCon.db_agora.CommitHistory.RemoveRange(history);
+                        DBCon.db_agora.SaveChanges();
+                    }
+
+                    // 添加新的数据
+                    DBCon.db_agora.CommitHistory.AddRange(commitList);
+                    DBCon.db_agora.SaveChanges();
+
+                    sws.WriteLine("end:" + pj.name);
+                    sws.Close();
+                }
+                catch (Exception ex)
+                {
+                    errlog = pj.name + ";" + ex.StackTrace + ex.Message + ";\n";
+                    sws.WriteLine(errlog);
+                    sws.Close();
+                    continue;
+                }
+            }
+
+            sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
+            sws.WriteLine("total:" + projects.Count.ToString() + ",max：" + projects[projects.Count - 1].id + ";using:" + doing);
+            sws.WriteLine("end:" + DateTime.Now.ToString());
+            sws.Close();
+            return;
+        }
+
+        public  static void GetDataRsync()
+        {
+            string folder = AppDomain.CurrentDomain.BaseDirectory + "\\LOG";
+            Directory.CreateDirectory(folder);
+            string errlog = "";
+            string logFile = folder + "\\commit_log.txt";
+            var sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
+
+            var days = -1;
+            var api = ConfigurationManager.AppSettings["gitlab_instance"];
+            var token = ConfigurationManager.AppSettings["gitlab_token1"];
+            var st = Convert.ToDateTime(DateTime.Now.AddDays(Convert.ToInt32(days)).ToShortDateString());
+
+            sws.WriteLine("start:" + DateTime.Now.ToString());
+
+            var projects = DBCon.db.Projects.Where(i => i.last_activity_at > st).OrderBy(i => i.id).ToList();
+
+            if (projects == null || projects.Count == 0)
+            {
+                sws.WriteLine("没有提交履历");
+                sws.WriteLine("end:" + DateTime.Now.ToString());
+                sws.Close();
+                return;
+            }
+            var users = DBCon.db.Users.ToList();
+
+            HttpClient httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", token);
+            sws.Close();
+
+            var doing = "";
+            foreach (var pj in projects)
+            {
+                if (pj.id == 1986)
+                {
+                    continue;
+                }
+                sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
+                sws.WriteLine("start:" + pj.name);
+                try
+                {
+                    doing = pj.id + "_" + pj.name;
+                    var commitIdList = new List<CommitInfo>();
+                    var commitList = new List<CommitDetail>();
+
+                    //分支名取得
+                    var response = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/branches?per_page=50").Result;
+                    if(response.StatusCode.ToString() != "OK")
+                    {
+                        sws.WriteLine("end:" + pj.name + "没有分支");
+                        sws.Close();
+                        continue ;
+                    }
+
+                    int TotalPages = int.Parse(response.Headers.GetValues("X-Total-Pages").First());
+                    int Page = int.Parse(response.Headers.GetValues("X-Page").First());
+                    while (Page <= TotalPages)
+                    {
+                        response = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/branches?per_page=50&page=" + Page.ToString()).Result;
+                        var result = response.Content.ReadAsStringAsync().Result;
+                        try
+                        {
+                            if (response.StatusCode.ToString() == "OK")
+                            {
+                                var branchList = JsonConvert.DeserializeObject<List<BranchInfo>>(result);
+                                foreach (var b in branchList)
+                                {
+                                    // 代码提交ID
+                                    try
+                                    {
+                                        Thread.Sleep(20);
+                                        var responseSub = httpClient.GetAsync(api + "projects/" + pj.id + "/repository/commits?ref_name=" + b.name + "&per_page=9999").Result;
+                                        result = responseSub.Content.ReadAsStringAsync().Result;
+                                        var commits = JsonConvert.DeserializeObject<List<CommitInfo>>(result);
+                                        foreach (var c in commits)
+                                        {
+                                            commitIdList.Add(new CommitInfo { Id = c.Id });
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        sws.WriteLine("bran1:" + pj.name + ex.Message + ex.StackTrace);
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            sws.WriteLine("bran2:" + pj.name + ex.Message + ex.StackTrace);
+                            continue;
+                        }
+
+                        // 分支分页
+                        if (Page < TotalPages)
+                        {
+                            Page = int.Parse(response.Headers.GetValues("X-Next-Page").First());
+                        }
+                        else
+                        {
+                            Page = TotalPages + 1;
+                        }
+                    }
+
+                    // 课题别所有提交ID取得
+                    var commitAll = commitIdList.Where((x, i) => commitIdList.FindIndex(s => s.Id == x.Id) == i).ToList();
+                    if (commitAll == null || commitAll.Count == 0)
+                    {
+                        sws.WriteLine("end:" + pj.name + "没有分支2");
+                        sws.Close();
+                        continue;
+                    }
+
+                    // 代码提交履历取得
+                    foreach (var c in commitAll)
+                    {
+                        var url_sha = api + "projects/" + pj.id + "/repository/commits/" + c.Id;
+                        response = httpClient.GetAsync(url_sha).Result;
+                        var result = response.Content.ReadAsStringAsync().Result;
                         var commitDetail = JsonConvert.DeserializeObject<CommitDetail>(result);
                         commitDetail.commit_id = commitDetail.id;
                         commitDetail.project_name = pj.name;
@@ -125,38 +359,42 @@ namespace GitLabManager.Controllers
                         }
 
                         commitDetail.id = null;
-                        if(commitDetail.stats != null && commitDetail.committed_date != null)
+                        if (commitDetail.stats != null && commitDetail.committed_date != null)
                         {
                             commitList.Add(commitDetail);
                         }
                     }
 
-                    var history = DBCon.db_agora.CommitHistory.Where(c => c.project_id == pj.id);
-
                     //旧的数据删除
+                    var history = DBCon.db_agora.CommitHistory.Where(c => c.project_id == pj.id);
                     if (history != null && history.Count() > 0)
                     {
                         DBCon.db_agora.CommitHistory.RemoveRange(history);
+                        DBCon.db_agora.SaveChanges();
                     }
 
                     // 添加新的数据
                     DBCon.db_agora.CommitHistory.AddRange(commitList);
                     DBCon.db_agora.SaveChanges();
+
+                    sws.WriteLine("end:" + pj.name);
+                    sws.Close();
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    errlog = pj.name + ";" + ex.StackTrace + ex.Message + ";\n" ;
+                    errlog = pj.name + ";" + ex.StackTrace + ex.Message + ";\n";
                     sws.WriteLine(errlog);
+                    sws.Close();
                     continue;
                 }
             }
 
+            sws = new StreamWriter(logFile, true, System.Text.Encoding.UTF8);
             sws.WriteLine("total:" + projects.Count.ToString() + ",max：" + projects[projects.Count - 1].id + ";using:" + doing);
             sws.WriteLine("end:" + DateTime.Now.ToString());
             sws.Close();
-            return ;
+            return;
         }
-
         [HttpGet]
         public IHttpActionResult GetWareHouse()
         {
@@ -236,7 +474,7 @@ namespace GitLabManager.Controllers
             var graphList = new List<GraphView>();
             var graphUserList = new List<GraphView>();
 
-            if (list == null || list.Count == 0)
+            if (list == null || list.Count == 0 ||( list.Count == 1 && list[0] == "null"))
             {
                 return Json(new { date = new List<string>() { }, dataProject = graphList, dataUser = graphUserList });
             }

@@ -18,5 +18,6 @@ namespace GitLabManager.DataContext
         public virtual DbSet<UsersStarAgreements> UsersStarAgreements { get; set; }
 
         public virtual DbSet<CommitDetail> CommitHistory { get; set; }
+
     }
 }

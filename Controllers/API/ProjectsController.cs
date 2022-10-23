@@ -172,7 +172,7 @@ namespace GitLabManager.Controllers.API
         private string GetProjectsList(int nsId,List<Projects> projects)
         {
             string result = "";
-            var pj = (from p in projects where p.namespace_id == nsId.ToString() select new {p.id,p.name}).ToList() ;
+            var pj = (from p in projects where p.namespace_id == nsId.ToString() select new {p.id,p.name}).OrderBy(i =>i.name).ToList() ;
             if (pj != null && pj.Count > 0)
             {
                 for (var i = 0; i < pj.Count; i++)
@@ -452,7 +452,7 @@ namespace GitLabManager.Controllers.API
 
         private string ChildrenData(Models.NameSpaces ns, List<Models.NameSpaces> allGroups, string resultJson,List<Projects> projects,string flag)
         {
-            var subGroup = allGroups.Where(i => i.parent_id == ns.id.ToString()).ToList();
+            var subGroup = allGroups.Where(i => i.parent_id == ns.id.ToString()).OrderBy(i =>i.name).ToList();
             if (subGroup == null || subGroup.Count == 0)
             {
                 if (flag != null && flag != "" && flag == "pj")
