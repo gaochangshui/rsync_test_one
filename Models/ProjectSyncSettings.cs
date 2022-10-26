@@ -200,7 +200,9 @@ namespace GitLabManager.Models
 
     [Table("t", Schema = "public")]
     public class FileCodeDetail
-    { 
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
         public string project { get; set; }
         public string language { get; set; }
         public string file { get; set; }

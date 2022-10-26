@@ -559,7 +559,7 @@ namespace GitLabManager.Controllers.API
                 };
                 return Json(pj);
             }
-            catch
+            catch(Exception ex)
             {
                 return null;
             }
