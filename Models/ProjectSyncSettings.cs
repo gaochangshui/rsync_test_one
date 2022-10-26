@@ -1,7 +1,9 @@
-﻿using System;
+﻿using GetUserAvatar.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Xml.Linq;
 
 namespace GitLabManager.Models
 {
@@ -194,5 +196,37 @@ namespace GitLabManager.Models
         public int additions { get; set; }
         public int deletions { get; set; }
         public int total { get; set; }
+    }
+
+    [Table("t", Schema = "public")]
+    public class FileCodeDetail
+    { 
+        public string project { get; set; }
+        public string language { get; set; }
+        public string file { get; set; }
+        public string file_dirname { get; set; }
+        public string file_basename { get; set; }
+        public int nblank { get; set; }
+        public int ncomment { get; set; }
+        public int ncode { get; set; }
+        public float nscaled { get; set; }
+    }
+
+    [Table("project_files", Schema = "public")]
+    public class ProjectFiles
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
+        public int project_id { get; set; }
+        public string project_name { get; set; }
+        public string branch { get; set; }
+        public string project { get; set; }
+        public string language { get; set; }
+        public string file { get; set; }
+        public string file_dirname { get; set; }
+        public string file_basename { get; set; }
+        public int nblank { get; set; }
+        public int ncomment { get; set; }
+        public int ncode { get; set; }
     }
 }

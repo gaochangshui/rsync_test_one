@@ -19,5 +19,10 @@ namespace GitLabManager.DataContext
 
         public virtual DbSet<CommitDetail> CommitHistory { get; set; }
 
+        public virtual DbSet<FileCodeDetail> FileCodeDetail { get; set; }
+
+        public virtual DbSet<ProjectFiles> ProjectFiles { get; set; }
+
+
     }
 }
