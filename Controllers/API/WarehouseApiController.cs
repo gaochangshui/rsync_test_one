@@ -137,6 +137,25 @@ namespace GitLabManager.Controllers.API
         }
 
         [HttpGet]
+        public IHttpActionResult ProjectsComponet()
+        {
+            string pagesize = HttpContext.Current.Request.QueryString["pageSize"];
+            string pageNum = HttpContext.Current.Request.QueryString["pageNum"];
+
+            List<Project> projects = ProjectsInComponet();
+            Page_Warehouses page = new Page_Warehouses();
+            if (projects.Count > 0)
+            {
+                page = GetWarehouses(null, null, pageNum, pagesize, projects);
+                return Json(page);
+            }
+            page.rowCount = 0;
+            page.pageSize = Convert.ToInt32(pagesize);
+            page.pageNum = Convert.ToInt32(pageNum);
+            return Json(page);
+        }
+
+        [HttpGet]
         public IHttpActionResult ProjectsIStarred()
         {
             string user_cd = HttpContext.Current.Request.QueryString["user_cd"];
@@ -164,7 +183,9 @@ namespace GitLabManager.Controllers.API
             int myProjNum = ProjectsIInvolved(user_cd).Count;
             int tempProjNum = ProjectsInGroup().Count;
             int starredProjNum = ProjectsIStarred(user_cd).Count;
-            var num = new { all = allProjNum ,my = myProjNum ,temp = tempProjNum , starred = starredProjNum };
+            int compoProjNum = ProjectsInComponet().Count;
+
+            var num = new { all = allProjNum ,my = myProjNum ,temp = tempProjNum , starred = starredProjNum ,compo = compoProjNum };
             return Json(new { Success = true, num = num });
         }
         private List<Project> ProjectsIInvolved(string user_cd)
@@ -265,6 +286,55 @@ namespace GitLabManager.Controllers.API
                 return new List<Project>();
             }
         }
+
+        private List<Project> ProjectsInComponet()
+        {
+            try
+            {
+                List<Project> list = new List<Project>();
+                string sql = "select temp.id,temp.name from " +
+                        "(select " +
+                        "p.id ,p.name " +
+                        ",cast(namespace_id as VARCHAR) group_id,n.name group_name " +
+                        ",string_agg(distinct concat_ws(':',u1.name,case when m1.access_level=50 then 'Owner' " +
+                        "when m1.access_level=40 then 'M' " +
+                        "when m1.access_level=30 then 'D' " +
+                        "when m1.access_level=20 then 'R' " +
+                        "when m1.access_level=10 then '' end ),',') AS project_member " +
+                        ",string_agg(distinct concat_ws(':',u2.name,case when m2.access_level=50 then 'Owner' " +
+                        "when m2.access_level=40 then 'M' " +
+                        "when m2.access_level=30 then 'D' " +
+                        "when m2.access_level=20 then 'R' " +
+                        "when m2.access_level=10 then 'G' end),',') AS group_member " +
+                        "From public.projects as p " +
+                        "inner join public.namespaces as n on p.namespace_id=n.id " +
+                        "left join public.members as m1 on p.id=m1.source_id and m1.source_type='Project' " +
+                        "left join public.members as m2 on n.id=m2.source_id and m2.source_type='Namespace' " +
+                        "left join public.users as u1 on m1.user_id=u1.id " +
+                        "left join public.users as u2 on m2.user_id=u2.id " +
+                        "group by p.id,p.name, p.namespace_id,n.name " +
+                        ")temp " +
+                        "where temp.name ilike 'compo-%' and group_name not like '%0%' ";
+                list = DBCon.db.Database.SqlQuery<Project>(sql).ToList();
+
+                //HttpClient httpClient = new HttpClient();
+                //httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
+                //HttpContent httpContent = new FormUrlEncodedContent(
+                //new List<KeyValuePair<string, string>> {
+                //        new KeyValuePair<string, string>("preferred_language", "zh_CN")
+                //});
+
+                //var response = httpClient.GetAsync(ConfigurationManager.AppSettings["gitlab_instance"] + "groups/" + group_id + "/projects").Result;
+                //var result = response.Content.ReadAsStringAsync().Result;
+                //List<Project> v = JsonConvert.DeserializeObject<List<Project>>(result);
+                return list;
+            }
+            catch
+            {
+                return new List<Project>();
+            }
+        }
+
         private List<Project> ProjectsIStarred(string user_cd)
         {
             try
