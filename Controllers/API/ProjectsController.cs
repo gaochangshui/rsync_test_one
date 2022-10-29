@@ -13,9 +13,11 @@ using Newtonsoft.Json;
 using LibGit2Sharp;
 using System.IO;
 using System.Web;
+using GitLabManager.Common.Log;
 
 namespace GitLabManager.Controllers.API
 {
+    [ErrorExceptionFilter]
     [ApiAuthorize]
     public class ProjectsController : ApiController
     {

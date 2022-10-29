@@ -13,9 +13,11 @@ using System.Web;
 using GitLabManager.Models;
 using System.IO;
 using GetUserAvatar.Models;
+using GitLabManager.Common.Log;
 
 namespace GitLabManager.Controllers
 {
+    [ErrorExceptionFilter]
     [ApiAuthorize]
     public class GitlabCodeAnalysisController : ApiController
     {
@@ -482,184 +484,189 @@ namespace GitLabManager.Controllers
             string gitlabUrl = ConfigurationManager.AppSettings["gitlab_url"];
             string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
 
-            var users = GetMembersAvatarUrl();
-            var history = new List<CommitView>();
-            var commitHistory = DBCon.db_agora.CommitHistory.ToList();
-            if (flag == "p")
+            try
             {
-                history = (from h in commitHistory
-                    where list.Any(p => p == h.project_id.ToString())
-                    select new CommitView
+                var users = GetMembersAvatarUrl();
+                var history = new List<CommitView>();
+                var commitHistory = DBCon.db_agora.CommitHistory.ToList();
+                if (flag == "p")
+                {
+                    history = (from h in commitHistory
+                        where list.Any(p => p == h.project_id.ToString())
+                        select new CommitView
+                        {
+                            commit_id = h.commit_id,
+                            project_id = h.project_id,
+                            project_name = h.project_name,
+                            additions = h.stats.additions,
+                            deletions = h.stats.deletions,
+                            committer_id = h.committer_id,
+                            committer_name = h.committer_name,
+                            committer_email = h.committer_email,
+                            committed_date = h.committed_date
+                        }).ToList();
+                }
+                else
+                {
+                    history = (from h in commitHistory
+                        where list.Any(p => p == h.committer_id)
+                        select new CommitView
+                        {
+                            commit_id = h.commit_id,
+                            project_id = h.project_id,
+                            project_name = h.project_name,
+                            additions = h.stats.additions,
+                            deletions = h.stats.deletions,
+                            committer_id = h.committer_id,
+                            committer_name = h.committer_name,
+                            committer_email = h.committer_email,
+                            committed_date = h.committed_date
+                        }).ToList();
+                }
+
+                // 图像数据做成
+                var wareData = new List<SumView>();
+                foreach(var h in history)
+                {
+                    wareData.Add(new SumView
                     {
-                        commit_id = h.commit_id,
                         project_id = h.project_id,
-                        project_name = h.project_name,
-                        additions = h.stats.additions,
-                        deletions = h.stats.deletions,
                         committer_id = h.committer_id,
-                        committer_name = h.committer_name,
-                        committer_email = h.committer_email,
-                        committed_date = h.committed_date
-                    }).ToList();
-            }
-            else
-            {
-                history = (from h in commitHistory
-                    where list.Any(p => p == h.committer_id)
-                    select new CommitView
-                    {
-                        commit_id = h.commit_id,
-                        project_id = h.project_id,
+                        committer_name=h.committer_name,
                         project_name = h.project_name,
-                        additions = h.stats.additions,
-                        deletions = h.stats.deletions,
-                        committer_id = h.committer_id,
-                        committer_name = h.committer_name,
-                        committer_email = h.committer_email,
-                        committed_date = h.committed_date
-                    }).ToList();
-            }
+                        committed_date = h.committed_date.Substring(0,10),
+                        committed_date_id = h.committed_date.Substring(0, 10).Replace("-","").Replace(" ",""),
+                        additions = h.additions,
+                        deletions = h.deletions,
+                    }) ;
+                }
 
-            // 图像数据做成
-            var wareData = new List<SumView>();
-            foreach(var h in history)
+                var sumData = from s in wareData
+                    group s by new { s.project_id,s.project_name,s.committed_date ,s.committed_date_id} into g
+                    select new { 
+                        g.Key.project_id,
+                        g.Key.project_name,
+                        g.Key.committed_date_id,
+                        g.Key.committed_date,
+                        additions = g.Sum(i => i.additions),
+                        deletions = g.Sum(i => i.deletions),
+                        counts = g.Count()
+                    } ;
+
+                var sumDataUser = from s in wareData
+                    group s by new { s.committer_id, s.committer_name, s.committed_date, s.committed_date_id } into g
+                    select new
+                    {
+                        g.Key.committer_id,
+                        g.Key.committer_name,
+                        g.Key.committed_date_id,
+                        g.Key.committed_date,
+                        additions = g.Sum(i => i.additions),
+                        deletions = g.Sum(i => i.deletions),
+                        counts = g.Count()
+                    };
+
+                var projects = (from s in sumData group s by new { s.project_id , s.project_name } into g select new ProjectUrls { project_id = g.Key.project_id, project_name = g.Key.project_name }).ToList();
+                var userInfo = (from s in sumDataUser select new { s.committer_id, s.committer_name }).Distinct().OrderBy(i => i.committer_id).ToList();
+                var committedDate = (from s in sumData select new { s.committed_date_id, s.committed_date }).Distinct().OrderBy(i => i.committed_date_id).Select(c =>c.committed_date).ToList();
+
+                //var urlProject = ProjectURL(projects);
+
+                committedDate = DateConvert(committedDate);
+
+                foreach (var u in userInfo)
+                {
+                    var dataCounts = new List<int>();
+                    var dataAdditions = new List<int>();
+                    var dataDeletions = new List<int>();
+                    var dataList = sumDataUser.Where(s => s.committer_id == u.committer_id).ToList();
+                    if (u.committer_id == null)
+                    {
+                        dataList = sumDataUser.Where(s => s.committer_name == u.committer_name).ToList();
+                    }
+
+                    foreach (var d in committedDate)
+                    {
+                        var result = dataList.Where(s => s.committed_date == d).FirstOrDefault();
+                        if (result != null)
+                        {
+                            dataCounts.Add(result.counts);
+                            dataAdditions.Add(result.additions);
+                            dataDeletions.Add(result.deletions);
+                        }
+                        else
+                        {
+                            dataCounts.Add(0);
+                            dataAdditions.Add(0);
+                            dataDeletions.Add(0);
+                        }
+                    }
+
+                    var url = users.Where(i => i.username == u.committer_id).Select(i =>i.url).FirstOrDefault();
+
+                    if (url == null || url == "")
+                    {
+                        url = defaultFace;
+                    }
+                    graphUserList.Add(new GraphView
+                    {
+                        id = u.committer_id,
+                        name = u.committer_name,
+                        url = url,
+                        type = "line",
+                        cntTotal = dataCounts.Sum(),
+                        countData = dataCounts,
+                        addTotal = dataAdditions.Sum(),
+                        additionsData = dataAdditions,
+                        delTotal = dataDeletions.Sum(),
+                        deletionsData = dataDeletions,
+                    });
+                }
+
+                foreach (var p in projects)
+                {
+                    var dataCounts = new List<int>();
+                    var dataAdditions = new List<int>();
+                    var dataDeletions = new List<int>();
+                    var dataList = sumData.Where(s => s.project_id == p.project_id).ToList();
+
+                    foreach (var d in committedDate)
+                    {
+                        var result = dataList.Where(s => s.committed_date == d).FirstOrDefault();
+                        if (result != null)
+                        {
+                            dataCounts.Add(result.counts);
+                            dataAdditions.Add(result.additions);
+                            dataDeletions.Add(result.deletions);
+                        }
+                        else
+                        {
+                            dataCounts.Add(0);
+                            dataAdditions.Add(0);
+                            dataDeletions.Add(0);
+                        }
+                    }
+
+                    graphList.Add(new GraphView
+                    {
+                        name = p.project_name,
+                        url = p.Url,
+                        id = p.project_id.ToString(),
+                        type = "line",
+                        cntTotal = dataCounts.Sum(),
+                        countData = dataCounts,
+                        addTotal = dataAdditions.Sum(),
+                        additionsData = dataAdditions,
+                        delTotal = dataDeletions.Sum(),
+                        deletionsData = dataDeletions,
+                    });
+                }
+                return Json( new { date = committedDate, dataProject = graphList, dataUser = graphUserList });
+            }
+            catch(Exception ex)
             {
-                wareData.Add(new SumView
-                {
-                    project_id = h.project_id,
-                    committer_id = h.committer_id,
-                    committer_name=h.committer_name,
-                    project_name = h.project_name,
-                    committed_date = h.committed_date.Substring(0,10),
-                    committed_date_id = h.committed_date.Substring(0, 10).Replace("-","").Replace(" ",""),
-                    additions = h.additions,
-                    deletions = h.deletions,
-                }) ;
+                throw ex;
             }
-
-           var sumData = from s in wareData
-                group s by new { s.project_id,s.project_name,s.committed_date ,s.committed_date_id} into g
-                select new { 
-                    g.Key.project_id,
-                    g.Key.project_name,
-                    g.Key.committed_date_id,
-                    g.Key.committed_date,
-                    additions = g.Sum(i => i.additions),
-                    deletions = g.Sum(i => i.deletions),
-                    counts = g.Count()
-                } ;
-
-            var sumDataUser = from s in wareData
-                group s by new { s.committer_id, s.committer_name, s.committed_date, s.committed_date_id } into g
-                select new
-                {
-                    g.Key.committer_id,
-                    g.Key.committer_name,
-                    g.Key.committed_date_id,
-                    g.Key.committed_date,
-                    additions = g.Sum(i => i.additions),
-                    deletions = g.Sum(i => i.deletions),
-                    counts = g.Count()
-                };
-
-            var projects = (from s in sumData group s by new { s.project_id , s.project_name } into g select new ProjectUrls { project_id = g.Key.project_id, project_name = g.Key.project_name }).ToList();
-            var userInfo = (from s in sumDataUser select new { s.committer_id, s.committer_name }).Distinct().OrderBy(i => i.committer_id).ToList();
-            var committedDate = (from s in sumData select new { s.committed_date_id, s.committed_date }).Distinct().OrderBy(i => i.committed_date_id).Select(c =>c.committed_date).ToList();
-
-            //var urlProject = ProjectURL(projects);
-
-            committedDate = DateConvert(committedDate);
-
-
-
-            foreach (var u in userInfo)
-            {
-                var dataCounts = new List<int>();
-                var dataAdditions = new List<int>();
-                var dataDeletions = new List<int>();
-                var dataList = sumDataUser.Where(s => s.committer_id == u.committer_id).ToList();
-                if (u.committer_id == null)
-                {
-                    dataList = sumDataUser.Where(s => s.committer_name == u.committer_name).ToList();
-                }
-
-                foreach (var d in committedDate)
-                {
-                    var result = dataList.Where(s => s.committed_date == d).FirstOrDefault();
-                    if (result != null)
-                    {
-                        dataCounts.Add(result.counts);
-                        dataAdditions.Add(result.additions);
-                        dataDeletions.Add(result.deletions);
-                    }
-                    else
-                    {
-                        dataCounts.Add(0);
-                        dataAdditions.Add(0);
-                        dataDeletions.Add(0);
-                    }
-                }
-
-                var url = users.Where(i => i.username == u.committer_id).Select(i =>i.url).FirstOrDefault();
-
-                if (url == null || url == "")
-                {
-                    url = defaultFace;
-                }
-                graphUserList.Add(new GraphView
-                {
-                    id = u.committer_id,
-                    name = u.committer_name,
-                    url = url,
-                    type = "line",
-                    cntTotal = dataCounts.Sum(),
-                    countData = dataCounts,
-                    addTotal = dataAdditions.Sum(),
-                    additionsData = dataAdditions,
-                    delTotal = dataDeletions.Sum(),
-                    deletionsData = dataDeletions,
-                });
-            }
-
-            foreach (var p in projects)
-            {
-                var dataCounts = new List<int>();
-                var dataAdditions = new List<int>();
-                var dataDeletions = new List<int>();
-                var dataList = sumData.Where(s => s.project_id == p.project_id).ToList();
-
-                foreach (var d in committedDate)
-                {
-                    var result = dataList.Where(s => s.committed_date == d).FirstOrDefault();
-                    if (result != null)
-                    {
-                        dataCounts.Add(result.counts);
-                        dataAdditions.Add(result.additions);
-                        dataDeletions.Add(result.deletions);
-                    }
-                    else
-                    {
-                        dataCounts.Add(0);
-                        dataAdditions.Add(0);
-                        dataDeletions.Add(0);
-                    }
-                }
-
-                graphList.Add(new GraphView
-                {
-                    name = p.project_name,
-                    url = p.Url,
-                    id = p.project_id.ToString(),
-                    type = "line",
-                    cntTotal = dataCounts.Sum(),
-                    countData = dataCounts,
-                    addTotal = dataAdditions.Sum(),
-                    additionsData = dataAdditions,
-                    delTotal = dataDeletions.Sum(),
-                    deletionsData = dataDeletions,
-                });
-            }
-            return Json( new { date = committedDate, dataProject = graphList, dataUser = graphUserList });
         }
 
         private List<string> DateConvert(List<string> commit_date)
