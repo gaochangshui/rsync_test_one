@@ -21,10 +21,6 @@ namespace GitLabManager.Controllers.API
     [ApiAuthorize]
     public class ProjectsController : ApiController
     {
-        // public static ApplicationDbContext db = new ApplicationDbContext();
-
-        // public static AgoraDbContext db_agora = new AgoraDbContext();
-
         [HttpGet]
         public IHttpActionResult GetLocationGroup()
         {
@@ -54,14 +50,15 @@ namespace GitLabManager.Controllers.API
 
                     // 子节点组数据取得
                     resultJson += StringJson("body_start", ns.id.ToString(), ns.name);
-                    if (flag != null && flag != "" && flag == "pj")
+                    /*if (flag != null && flag != "" && flag == "pj")
                     {
                         var subPj = GetProjectsList(ns.id, projects);
                         if (subPj != "")
                         {
                             resultJson += subPj + "," ;
                         }
-                    }
+                    }*/
+
                     resultJson = ChildrenData(rootGroup[i], allGroups, resultJson, projects, flag);
 
                     if (i != rootGroup.Count - 1)
@@ -71,12 +68,11 @@ namespace GitLabManager.Controllers.API
                 }
 
                 resultJson += StringJson("end");
-
                 return Json(new { location = nameSpaces, group = resultJson });
             }
-            catch
+            catch(Exception ex)
             {
-                return Json(new NameSpaces { });
+                throw ex;
             }
         }
 
@@ -454,20 +450,27 @@ namespace GitLabManager.Controllers.API
 
         private string ChildrenData(Models.NameSpaces ns, List<Models.NameSpaces> allGroups, string resultJson,List<Projects> projects,string flag)
         {
+            var subPj = GetProjectsList(ns.id, projects);
+            if (flag != null && flag != "" && flag == "pj")
+            {
+                resultJson += subPj;
+            }
+
             var subGroup = allGroups.Where(i => i.parent_id == ns.id.ToString()).OrderBy(i =>i.name).ToList();
             if (subGroup == null || subGroup.Count == 0)
             {
-                if (flag != null && flag != "" && flag == "pj")
-                {
-                    resultJson += GetProjectsList(ns.id, projects);
-                }
                 resultJson += StringJson("body_end");
             }
             else
             {
+                if(subPj != "")
+                {
+                    resultJson += ",";
+                }
                 for (var i = 0; i < subGroup.Count; i++)
                 {
                     resultJson += StringJson("body_start", subGroup[i].id.ToString(), subGroup[i].name);
+
                     resultJson = ChildrenData(subGroup[i], allGroups, resultJson, projects, flag);
                     if (i != subGroup.Count - 1)
                     {
