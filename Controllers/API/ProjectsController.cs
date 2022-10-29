@@ -50,15 +50,6 @@ namespace GitLabManager.Controllers.API
 
                     // 子节点组数据取得
                     resultJson += StringJson("body_start", ns.id.ToString(), ns.name);
-                    /*if (flag != null && flag != "" && flag == "pj")
-                    {
-                        var subPj = GetProjectsList(ns.id, projects);
-                        if (subPj != "")
-                        {
-                            resultJson += subPj + "," ;
-                        }
-                    }*/
-
                     resultJson = ChildrenData(rootGroup[i], allGroups, resultJson, projects, flag);
 
                     if (i != rootGroup.Count - 1)
