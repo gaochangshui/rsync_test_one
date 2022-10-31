@@ -401,18 +401,22 @@ namespace GitLabManager.Controllers
         public IHttpActionResult GetWareHouse()
         {
             string namespace_id = HttpContext.Current.Request.QueryString["namespace_id"];
-            var projects = DBCon.db.Projects.Where(p => p.namespace_id == namespace_id);
+            var projects = DBCon.db_two.Projects.Where(p => p.namespace_id == namespace_id);
             return Json(projects);
         }
 
         [HttpGet]
         public IHttpActionResult GetMembers()
         {
-            var users = from u in DBCon.db.Users
-                        join i in DBCon.db.Identities on u.id equals i.user_id
+            var iden = DBCon.db_two.Identities;
+            var users = DBCon.db_two.Users;
+
+            var list = from u in users
+                       join i in iden on u.id equals i.user_id
                         where u.state == "active" && i.provider == "ldapmain"
                         select new userView { id = u.id,name = u.name,username = u.username,email = u.email };
-            return Json(users);
+
+            return Json(list);
         }
 
         private List<userView> GetMembersAvatarUrl()
@@ -421,12 +425,14 @@ namespace GitLabManager.Controllers
             string persionFace = ConfigurationManager.AppSettings["persion_face"].Replace("match(gitlab_url)", gitlabUrl);
             string defaultFace = ConfigurationManager.AppSettings["default_face"].Replace("match(gitlab_url)", gitlabUrl);
 
-            var users = (from u in DBCon.db.Users
-                        join i in DBCon.db.Identities on u.id equals i.user_id
-                        where u.state == "active" && i.provider == "ldapmain"
-                        select new userView { username = u.username,url = u.avatar,id = u.id}).ToList();
+            var iden = DBCon.db_two.Identities;
+            var users = DBCon.db_two.Users;
+            var list = (from u in users
+                       join i in iden on u.id equals i.user_id
+                       where u.state == "active" && i.provider == "ldapmain"
+                       select new userView { id = u.id, name = u.name, username = u.username, email = u.email }).ToList();
 
-            foreach(var user in users)
+            foreach(var user in list)
             {
                 if (user.url == null || user.url == "")
                 {
@@ -437,35 +443,9 @@ namespace GitLabManager.Controllers
                     user.url = persionFace + user.id + "/" + user.url;
                 }
             }
-            return users;
+            return list;
         }
 
-        private List<ProjectUrls> ProjectURL(List<ProjectUrls> projects)
-        {
-            try
-            {
-                HttpClient httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", ConfigurationManager.AppSettings["gitlab_token1"]);
-                HttpContent httpContent = new FormUrlEncodedContent(
-                new List<KeyValuePair<string, string>> {
-                        new KeyValuePair<string, string>("preferred_language", "zh_CN")
-                });
-
-                foreach (var p in projects)
-                {
-                    var response = httpClient.GetAsync(ConfigurationManager.AppSettings["gitlab_instance"] + "projects/" + p.project_id).Result;
-                    var result = response.Content.ReadAsStringAsync().Result;
-                    SingleProject r = JsonConvert.DeserializeObject<SingleProject>(result);
-                    p.Url = r.web_url;
-                }
-
-                return projects;
-            }
-            catch
-            {
-                return null;
-            }
-        }
 
         [HttpPost]
         public IHttpActionResult GetGraphData(RequestInput input)
@@ -488,7 +468,7 @@ namespace GitLabManager.Controllers
             {
                 var users = GetMembersAvatarUrl();
                 var history = new List<CommitView>();
-                var commitHistory = DBCon.db_agora.CommitHistory.ToList();
+                var commitHistory = DBCon.db_agora_two.CommitHistory.ToList();
                 if (flag == "p")
                 {
                     history = (from h in commitHistory
@@ -774,5 +754,12 @@ namespace GitLabManager.Controllers
         public int cntTotal { get; set; }
         public int addTotal { get; set; }
         public int delTotal { get; set; }
+    }
+
+    public class Identites
+    {
+        public int id { get; set; }
+        public string provider { get; set; }
+        public string user_id { get; set; }
     }
 }
