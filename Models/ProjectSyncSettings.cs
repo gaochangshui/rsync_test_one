@@ -231,4 +231,24 @@ namespace GitLabManager.Models
         public int ncomment { get; set; }
         public int ncode { get; set; }
     }
+
+    [Table("features_mst", Schema = "public")]
+    public class FeaturesMst
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
+        public int feature_id { get; set; }
+        public string feature_name { get; set; }
+        public int parent_id { get; set; }
+        public bool enabled { get; set; }
+    }
+
+    [Table("user_feature_history", Schema = "public")]
+    public class UserFeatureHistory
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
+        public int user_id { get; set; }
+        public int feature_id { get; set; }
+    }
 }
