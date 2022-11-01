@@ -438,7 +438,7 @@ namespace GitLabManager.Controllers.API
                 return rr;
             }
         }
-
+       
         private string ChildrenData(Models.NameSpaces ns, List<Models.NameSpaces> allGroups, string resultJson,List<Projects> projects,string flag)
         {
             var subPj = GetProjectsList(ns.id, projects);
@@ -454,7 +454,7 @@ namespace GitLabManager.Controllers.API
             }
             else
             {
-                if(subPj != "")
+                if(subPj != "" && flag != null && flag != "" && flag == "pj")
                 {
                     resultJson += ",";
                 }
