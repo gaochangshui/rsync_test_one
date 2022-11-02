@@ -1,18 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Web.Http;
-using System.Diagnostics;
-using System.IO;
 using GitLabManager.DataContext;
 using System.Web;
 using GitLabManager.Models;
-using static ICSharpCode.SharpZipLib.Zip.ExtendedUnixData;
+using System.Data.Entity;
 using System.Web.UI.WebControls;
-using System.Xml.Linq;
-using System.Collections;
 
 namespace GitLabManager.Controllers
 {
@@ -54,6 +48,45 @@ namespace GitLabManager.Controllers
    
             }
             catch(Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        [HttpGet]
+        public IHttpActionResult SetMark()
+        {
+            try
+            {
+                string userId = HttpContext.Current.Request.QueryString["user_id"];
+                string featureId = HttpContext.Current.Request.QueryString["feature_id"];
+
+                if (userId == null || userId == "")
+                {
+                    return BadRequest("请输入用户ID");
+                }
+
+                if (featureId == null || featureId == "")
+                {
+                    return BadRequest("请输功能ID");
+                }
+
+                var history = DBCon.db_agora_two.UserFeatureHistory.Where(i => i.user_id == userId && i.feature_id == featureId).FirstOrDefault();
+                if (history == null)
+                {
+                    history = new UserFeatureHistory
+                    {
+                        feature_id = featureId,
+                        user_id = userId
+                    };
+
+                    DBCon.db_agora_two.Entry(history).State = EntityState.Added;
+                    int dbstate = DBCon.db_agora_two.SaveChanges();
+                }
+                return Json(new { success = true });
+
+            }
+            catch (Exception ex)
             {
                 throw ex;
             }
