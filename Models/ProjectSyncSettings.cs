@@ -237,9 +237,9 @@ namespace GitLabManager.Models
     {
         [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public string id { get; set; }
-        public int feature_id { get; set; }
+        public string feature_id { get; set; }
         public string feature_name { get; set; }
-        public int parent_id { get; set; }
+        public string parent_id { get; set; }
         public bool enabled { get; set; }
     }
 
@@ -248,7 +248,7 @@ namespace GitLabManager.Models
     {
         [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public string id { get; set; }
-        public int user_id { get; set; }
-        public int feature_id { get; set; }
+        public string user_id { get; set; }
+        public string feature_id { get; set; }
     }
 }

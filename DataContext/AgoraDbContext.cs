@@ -23,6 +23,8 @@ namespace GitLabManager.DataContext
 
         public virtual DbSet<ProjectFiles> ProjectFiles { get; set; }
 
+        public virtual DbSet<FeaturesMst> FeaturesMst { get; set; }
 
+        public virtual DbSet<UserFeatureHistory> UserFeatureHistory { get; set; }
     }
 }
