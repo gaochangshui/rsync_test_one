@@ -12,24 +12,25 @@ using System.Configuration;
 using Newtonsoft.Json;
 using LibGit2Sharp;
 using System.IO;
+using System.Web;
+using GitLabManager.Common.Log;
 
 namespace GitLabManager.Controllers.API
 {
+    [ErrorExceptionFilter]
     [ApiAuthorize]
     public class ProjectsController : ApiController
     {
-        // public static ApplicationDbContext db = new ApplicationDbContext();
-
-        // public static AgoraDbContext db_agora = new AgoraDbContext();
-
         [HttpGet]
         public IHttpActionResult GetLocationGroup()
         {
             try
             {
+                var flag = HttpContext.Current.Request.QueryString["flag"];
+
                 // 有效的所有群组
                 var allGroups = DBCon.db.NameSpaces.Where(i => i.type == "Group" && i.id != 2 && i.id != 10 && i.id != 15).ToList();
-
+                var projects = DBCon.db.Projects.ToList();
                 // 顶级群组
                 var rootGroup = allGroups.Where(i => i.parent_id == null).ToList();
 
@@ -49,7 +50,7 @@ namespace GitLabManager.Controllers.API
 
                     // 子节点组数据取得
                     resultJson += StringJson("body_start", ns.id.ToString(), ns.name);
-                    resultJson = ChildrenData(rootGroup[i], allGroups, resultJson);
+                    resultJson = ChildrenData(rootGroup[i], allGroups, resultJson, projects, flag);
 
                     if (i != rootGroup.Count - 1)
                     {
@@ -58,12 +59,11 @@ namespace GitLabManager.Controllers.API
                 }
 
                 resultJson += StringJson("end");
-
                 return Json(new { location = nameSpaces, group = resultJson });
             }
-            catch
+            catch(Exception ex)
             {
-                return Json(new NameSpaces { });
+                throw ex;
             }
         }
 
@@ -158,6 +158,26 @@ namespace GitLabManager.Controllers.API
             }
         }
        
+        private string GetProjectsList(int nsId,List<Projects> projects)
+        {
+            string result = "";
+            var pj = (from p in projects where p.namespace_id == nsId.ToString() select new {p.id,p.name}).OrderBy(i =>i.name).ToList() ;
+            if (pj != null && pj.Count > 0)
+            {
+                for (var i = 0; i < pj.Count; i++)
+                {
+                    result += "{\"value\": \"" + pj[i].id + "\",\"label\": \"" + pj[i].name + "\"}";
+
+                    if (i < pj.Count - 1)
+                    {
+                        result += ",";
+                    }
+                }
+            }
+
+            return result;
+        }
+
         private void SetQcdProject(WHCreateReq req,ReturnResult rr)
         {
             // 根据id检索出既存信息
@@ -258,7 +278,7 @@ namespace GitLabManager.Controllers.API
                 File.Copy(source, baseFolder + "\\.gitignore",true);
 
                 // 6.main 分支代码push
-                var isSuccess = PushMainBranch(token, baseFolder);
+                var isSuccess = PushMainBranch(token, baseFolder,req.qcdId);
 
                 if (isSuccess)
                 {
@@ -280,10 +300,13 @@ namespace GitLabManager.Controllers.API
             }
         }
 
-        private bool PushMainBranch(string token,string repository)
+        private bool PushMainBranch(string token,string repository,string qcdid = "")
         {
             try
             {
+                // 根据id检索出既存信息
+                var _agre = DBCon.db_agora.Agreements.Where(i => i.agreement_cd == qcdid).FirstOrDefault();
+                var commitMsg = "main 初始化（关联项目" + _agre.agreement_cd + " " + _agre.agreement_name + ")";
                 using (var repo = new Repository(@repository))
                 {
                     var remote = repo.Network.Remotes["origin"];
@@ -297,7 +320,7 @@ namespace GitLabManager.Controllers.API
                     Commands.Stage(repo, "*");
 
                     // 本地提交
-                    repo.Commit("main分支初期化", author, author);
+                    repo.Commit(commitMsg, author, author);
 
                     // push认证信息
                     var pushOption = new PushOptions()
@@ -315,7 +338,6 @@ namespace GitLabManager.Controllers.API
             {
                 return false;
             }
-
         }
 
         private bool PushOrtherBranch(string token, string repository,string branchType)
@@ -416,20 +438,31 @@ namespace GitLabManager.Controllers.API
                 return rr;
             }
         }
-
-        private string ChildrenData(Models.NameSpaces ns, List<Models.NameSpaces> allGroups, string resultJson)
+       
+        private string ChildrenData(Models.NameSpaces ns, List<Models.NameSpaces> allGroups, string resultJson,List<Projects> projects,string flag)
         {
-            var subGroup = allGroups.Where(i => i.parent_id == ns.id.ToString()).ToList();
+            var subPj = GetProjectsList(ns.id, projects);
+            if (flag != null && flag != "" && flag == "pj")
+            {
+                resultJson += subPj;
+            }
+
+            var subGroup = allGroups.Where(i => i.parent_id == ns.id.ToString()).OrderBy(i =>i.name).ToList();
             if (subGroup == null || subGroup.Count == 0)
             {
                 resultJson += StringJson("body_end");
             }
             else
             {
+                if(subPj != "" && flag != null && flag != "" && flag == "pj")
+                {
+                    resultJson += ",";
+                }
                 for (var i = 0; i < subGroup.Count; i++)
                 {
                     resultJson += StringJson("body_start", subGroup[i].id.ToString(), subGroup[i].name);
-                    resultJson = ChildrenData(subGroup[i], allGroups, resultJson);
+
+                    resultJson = ChildrenData(subGroup[i], allGroups, resultJson, projects, flag);
                     if (i != subGroup.Count - 1)
                     {
                         resultJson += StringJson("comma");

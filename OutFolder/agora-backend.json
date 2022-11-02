@@ -1,0 +1,64 @@
+{"header" : {
+  "cloc_url"           : "github.com/AlDanial/cloc",
+  "cloc_version"       : "1.94",
+  "elapsed_seconds"    : 1.07498002052307,
+  "n_files"            : 71,
+  "n_lines"            : 27520,
+  "files_per_second"   : 66.0477391621217,
+  "lines_per_second"   : 25600.4757991773,
+  "report_file"        : "C:\\workspace\\projects\\agora-backend\\OutFolder\\agora-backend.json"},
+"JavaScript" :{
+  "nFiles": 5,
+  "blank": 2272,
+  "comment": 7514,
+  "code": 6986},
+"C#" :{
+  "nFiles": 33,
+  "blank": 673,
+  "comment": 422,
+  "code": 5405},
+"CSS" :{
+  "nFiles": 5,
+  "blank": 39,
+  "comment": 40,
+  "code": 2001},
+"Razor" :{
+  "nFiles": 15,
+  "blank": 80,
+  "comment": 27,
+  "code": 895},
+"MSBuild script" :{
+  "nFiles": 1,
+  "blank": 0,
+  "comment": 6,
+  "code": 312},
+"SVG" :{
+  "nFiles": 1,
+  "blank": 0,
+  "comment": 0,
+  "code": 288},
+"XML" :{
+  "nFiles": 5,
+  "blank": 19,
+  "comment": 81,
+  "code": 251},
+"Markdown" :{
+  "nFiles": 4,
+  "blank": 72,
+  "comment": 0,
+  "code": 106},
+"Visual Studio Solution" :{
+  "nFiles": 1,
+  "blank": 1,
+  "comment": 1,
+  "code": 28},
+"ASP.NET" :{
+  "nFiles": 1,
+  "blank": 0,
+  "comment": 0,
+  "code": 1},
+"SUM": {
+  "blank": 3156,
+  "comment": 8091,
+  "code": 16273,
+  "nFiles": 71} }

@@ -1,9 +1,9 @@
-﻿using System;
+﻿using GetUserAvatar.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Web;
+using System.Xml.Linq;
 
 namespace GitLabManager.Models
 {
@@ -99,6 +99,7 @@ namespace GitLabManager.Models
         public string name { get; set; }
         public string namespace_id { get; set; }
         public string description { get; set; }
+        public DateTime last_activity_at { get; set; }
     }
 
     [Table("namespaces", Schema = "public")]
@@ -171,4 +172,83 @@ namespace GitLabManager.Models
         public string avatar { get; set; }
     }
 
+    [Table("commits_history", Schema = "public")]
+    public class CommitDetail
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
+
+        public int project_id { get; set; }
+        public string project_name { get; set; }
+        public string commit_id { get; set; }
+        public string message { get; set; }
+        public string committer_id { get; set; }
+        public string committer_name { get; set; }
+        public string committer_email { get; set; }
+        public string committed_date { get; set; }
+
+        public stats stats { get; set; }
+        //public string sync_time { get; set; }
+    }
+
+    public class stats
+    {
+        public int additions { get; set; }
+        public int deletions { get; set; }
+        public int total { get; set; }
+    }
+
+    [Table("t", Schema = "public")]
+    public class FileCodeDetail
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
+        public string project { get; set; }
+        public string language { get; set; }
+        public string file { get; set; }
+        public string file_dirname { get; set; }
+        public string file_basename { get; set; }
+        public int nblank { get; set; }
+        public int ncomment { get; set; }
+        public int ncode { get; set; }
+        public float nscaled { get; set; }
+    }
+
+    [Table("project_files", Schema = "public")]
+    public class ProjectFiles
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
+        public int project_id { get; set; }
+        public string project_name { get; set; }
+        public string branch { get; set; }
+        public string project { get; set; }
+        public string language { get; set; }
+        public string file { get; set; }
+        public string file_dirname { get; set; }
+        public string file_basename { get; set; }
+        public int nblank { get; set; }
+        public int ncomment { get; set; }
+        public int ncode { get; set; }
+    }
+
+    [Table("features_mst", Schema = "public")]
+    public class FeaturesMst
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
+        public string feature_id { get; set; }
+        public string feature_name { get; set; }
+        public string parent_id { get; set; }
+        public bool enabled { get; set; }
+    }
+
+    [Table("user_feature_history", Schema = "public")]
+    public class UserFeatureHistory
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string id { get; set; }
+        public string user_id { get; set; }
+        public string feature_id { get; set; }
+    }
 }

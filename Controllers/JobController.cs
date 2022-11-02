@@ -55,6 +55,24 @@ namespace GitLabManager.Controllers
                         WarehouseApiController.SetExpiresDate();
                     }
                 }
+
+                // 代码提交履历数据做成
+                if ((dt.Hour == 7 && dt.Minute == 15) ||(dt.Hour == 11 && dt.Minute == 30) || (dt.Hour == 18 && dt.Minute == 30))
+                {
+                    if (prodflg == "true")
+                    {
+                       GitlabCodeAnalysisController.GetDataRsync();
+                    }
+                }
+
+                // 代码提交履历数据做成
+                if (dt.Hour == 22 && dt.Minute == 01)
+                {
+                    if (prodflg == "true")
+                    {
+                        GitlabCodeAnalysisController.GetDataRsync2();
+                    }
+                }
             };
         }
      }

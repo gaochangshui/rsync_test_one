@@ -66,6 +66,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>DLL\LibGit2Sharp.dll</HintPath>
     </Reference>
+    <Reference Include="log4net, Version=2.0.15.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <HintPath>packages\log4net.2.0.15\lib\net45\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Bcl.AsyncInterfaces.1.1.0\lib\net461\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
     </Reference>
@@ -195,9 +198,13 @@
     <Compile Include="BLL\DingTalkClientBLL.cs" />
     <Compile Include="BLL\RSABLL.cs" />
     <Compile Include="BLL\SmtpClientBLL.cs" />
+    <Compile Include="Common\Log\LogHelper.cs" />
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\API\APIv1Controller.cs" />
     <Compile Include="Controllers\API\AccountApiController.cs" />
+    <Compile Include="Controllers\API\ClocAnalysisController.cs" />
+    <Compile Include="Controllers\API\FeatureHistoryController.cs" />
+    <Compile Include="Controllers\API\GitlabCodeAnalysisController.cs" />
     <Compile Include="Controllers\API\SystemController.cs" />
     <Compile Include="Controllers\API\UsersApiController.cs" />
     <Compile Include="Controllers\API\QcdApiController.cs" />
@@ -269,6 +276,9 @@
     <Content Include="fonts\glyphicons-halflings-regular.ttf" />
     <Content Include="fonts\glyphicons-halflings-regular.eot" />
     <Content Include=".editorconfig" />
+    <Content Include="log4net.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <None Include="packages.config" />
     <Content Include="Views\Warehouse\sync.cshtml" />
     <Content Include="Views\Home\Unauthorized.cshtml" />

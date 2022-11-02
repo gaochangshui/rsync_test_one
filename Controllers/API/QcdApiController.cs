@@ -559,7 +559,7 @@ namespace GitLabManager.Controllers.API
                 };
                 return Json(pj);
             }
-            catch
+            catch(Exception ex)
             {
                 return null;
             }
@@ -986,12 +986,17 @@ namespace GitLabManager.Controllers.API
                 }
 
                 //邮件发送
-                smtp.SendMail(user.email, strTo, strCc, title, sb.ToString());
-
-                // 审查者权限设定
-                ProjectPermissionSet(req);
-
-                return Json(new { Success = true, Message = "处理成功！" });
+               var result = smtp.SendMail(user.email, strTo, strCc, title, sb.ToString());
+                if (result == true)
+                {
+                    // 审查者权限设定
+                    ProjectPermissionSet(req);
+                    return Json(new { Success = true, Message = "处理成功！" });
+                }
+                else
+                {
+                    return Json(new { Success = false, Message = "处理失败！" });
+                }
             }
             catch (Exception ex)
             {
